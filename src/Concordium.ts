@@ -2,14 +2,11 @@ import Transport from "@ledgerhq/hw-transport";
 import { StatusCodes } from "@ledgerhq/errors";
 import {
   pathToBuffer,
-  serializeLegacyTransaction,
   serializeSignature,
-  serializeKlaytnTransaction,
+  serializeConcordiumTransaction,
 } from "./serialization";
-import Caver, {
-  Transaction,
-} from "caver-js";
 import BigNumber from "bignumber.js";
+import * as ConcordiumSDK from "@concordium/web-sdk";
 
 const LEDGER_CLA = 0xe0;
 const CLA_OFFSET = 0x00;
@@ -33,25 +30,24 @@ const INS = {
   SIGN_TX: 0x06,
 };
 
-const klay_path = "44'/8217'/0'/0/";
-const caver = new Caver();
+const concordium_path = "1105'/0'/0'/0/";
 
 /**
- * Klaytn API
+ * Concordium API
  *
  * @param transport a transport for sending commands to a device
  * @param scrambleKey a scramble key
  *
  * @example
- * import Klaytn from "@ledgerhq/hw-app-klaytn";
- * const klaytn = new Klaytn(transport);
+ * import Concordium from "@ledgerhq/hw-app-concordium";
+ * const Concordium = new Concordium(transport);
  */
-export default class Klaytn {
+export default class Concordium {
   private transport: Transport;
 
   constructor(
     transport: Transport,
-    scrambleKey = "klaytn_default_scramble_key"
+    scrambleKey = "concordium_default_scramble_key"
   ) {
     this.transport = transport;
     this.transport.decorateAppAPIMethods(
@@ -71,7 +67,7 @@ export default class Klaytn {
    * @returns version object
    *
    * @example
-   * klaytn.getVersion().then(r => r.version)
+   * concordium.getVersion().then(r => r.version)
    */
   async getVersion(): Promise<{ version: string }> {
     const [major, minor, patch] = await this.sendToDevice(
@@ -86,7 +82,7 @@ export default class Klaytn {
   }
 
   /**
-   * Get Klaytn address (public key) for a BIP32 path.
+   * Get Concordium address (public key) for a BIP32 path.
    *
    * @param path a BIP32 path
    * @param display flag to show display
@@ -94,7 +90,7 @@ export default class Klaytn {
    * @returns an object with the address field
    *
    * @example
-   * klaytn.getAddress("44'/8217'/0'/0/").then(r => r.address)
+   * concordium.getAddress("1105'/0'/0'/0/").then(r => r.address)
    */
   async getAddress(
     path: string,
@@ -137,18 +133,19 @@ export default class Klaytn {
   }
 
   /**
-   * Signs a Klaytn transaction using the specified account index.
+   * Signs a Concordium transaction using the specified account index.
    * @param txn - The transaction to sign.
    * @param accountIndex - The index of the account to use for signing. Default is 0.
    * @returns An object containing the signature and the signed transaction.
    * @throws Error if the user declines the transaction.
    * @example
-   * klaytn.signTransaction(txn).then(r => r.signature)
+   * concordium.signTransfer(txn).then(r => r.signature)
    */
-  async signTransaction(txn:Transaction, accountIndex=0): Promise<{ signature: string[]; signedTxn: Transaction }> {
-    const { payloads, txType, chainId, chainIdTruncated } = serializeKlaytnTransaction(txn, klay_path + accountIndex);
+  async signTransfer(txn:ConcordiumSDK.AccountTransaction, accountIndex=0): Promise<{ signature: string[]; transaction: ConcordiumSDK.AccountTransaction }> {
 
-    let response;
+    const { payloads } = serializeConcordiumTransaction(txn, concordium_path + accountIndex);
+
+    let response = Buffer.from([1,2,3]);
 
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
@@ -162,17 +159,18 @@ export default class Klaytn {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const signature = this.serializeAndFormatSignature(
-      response,
-      chainId,
-      chainIdTruncated,
-      txType
-    );
-    txn.appendSignatures(signature);
+    const signature= [""];
+    // const signature = this.serializeAndFormatSignature(
+    //   response,
+    //   chainId,
+    //   chainIdTruncated,
+    //   txType
+    // );
+
 
     return {
       signature: signature,
-      signedTxn: txn,
+      transaction: txn,
     };
   }
 

@@ -1,16 +1,8 @@
+import * as ConcordiumSDK from "@concordium/web-sdk";
 import BigNumber from "bignumber.js";
 import BIPPath from "bip32-path";
-import Caver, {
-  AbstractTransaction,
-  LegacyTransaction,
-  ValueTransfer,
-  ValueTransferMemo,
-} from "caver-js";
-import { encode, decode } from "@ethersproject/rlp";
 
 const MAX_CHUNK_SIZE = 255;
-
-const caver = new Caver();
 
 const serializePath = (path: number[]): Buffer => {
   const buf = Buffer.alloc(1 + path.length * 4);
@@ -27,67 +19,67 @@ function doesStringIncludeAnyValueInArray(
   return array.some((v) => string.includes(v));
 }
 
-function decodeTxInfo(rawTx: Buffer, txType: string) {
-  const rlpData = rawTx;
-  const rlpTx = decode(rlpData).map((hex) => Buffer.from(hex.slice(2), "hex"));
-  let chainIdTruncated = 0;
-  const rlpDecoded = decode(rlpData);
+// function decodeTxInfo(rawTx: Buffer, txType: string) {
+//   const rlpData = rawTx;
+//   const rlpTx = decode(rlpData).map((hex: string) => Buffer.from(hex.slice(2), "hex"));
+//   let chainIdTruncated = 0;
+//   const rlpDecoded = decode(rlpData);
 
-  let decodedChainId;
-  const TRANSACTION_TYPES = [
-    "ValueTransfer",
-    "ValueTransferMemo",
-    "SmartContractDeploy",
-    "SmartContractExecution",
-    "Cancel",
-    "FeeDelegatedValueTransfer",
-  ];
+//   let decodedChainId;
+//   const TRANSACTION_TYPES = [
+//     "TRANSFER",
+//     "ValueTransferMemo",
+//     "SmartContractDeploy",
+//     "SmartContractExecution",
+//     "Cancel",
+//     "FeeDelegatedValueTransfer",
+//   ];
 
-  if (doesStringIncludeAnyValueInArray(txType, TRANSACTION_TYPES)) {
-    decodedChainId = rlpTx[1];
-  } else {
-    decodedChainId = rlpTx.length > 6 ? rlpTx[6] : Buffer.from("0x01", "hex");
-  }
-  const chainIdSrc = decodedChainId;
-  let chainId = new BigNumber(0);
-  if (chainIdSrc) {
-    // Using BigNumber because chainID could be any uint256.
-    chainId = new BigNumber(chainIdSrc.toString("hex"), 16);
-    const chainIdTruncatedBuf = Buffer.alloc(4);
-    if (chainIdSrc.length > 4) {
-      chainIdSrc.copy(chainIdTruncatedBuf);
-    } else {
-      chainIdSrc.copy(chainIdTruncatedBuf, 4 - chainIdSrc.length);
-    }
-    chainIdTruncated = chainIdTruncatedBuf.readUInt32BE(0);
-  }
+//   if (doesStringIncludeAnyValueInArray(txType, TRANSACTION_TYPES)) {
+//     decodedChainId = rlpTx[1];
+//   } else {
+//     decodedChainId = rlpTx.length > 6 ? rlpTx[6] : Buffer.from("0x01", "hex");
+//   }
+//   const chainIdSrc = decodedChainId;
+//   let chainId = new BigNumber(0);
+//   if (chainIdSrc) {
+//     // Using BigNumber because chainID could be any uint256.
+//     chainId = new BigNumber(chainIdSrc.toString("hex"), 16);
+//     const chainIdTruncatedBuf = Buffer.alloc(4);
+//     if (chainIdSrc.length > 4) {
+//       chainIdSrc.copy(chainIdTruncatedBuf);
+//     } else {
+//       chainIdSrc.copy(chainIdTruncatedBuf, 4 - chainIdSrc.length);
+//     }
+//     chainIdTruncated = chainIdTruncatedBuf.readUInt32BE(0);
+//   }
 
-  let vrsOffset = 0;
-  if (rlpTx.length > 6) {
-    const rlpVrs = Buffer.from(encode(rlpTx.slice(-3)).slice(2), "hex");
+//   let vrsOffset = 0;
+//   if (rlpTx.length > 6) {
+//     const rlpVrs = Buffer.from(encode(rlpTx.slice(-3)).slice(2), "hex");
 
-    vrsOffset = rawTx.length - (rlpVrs.length - 1);
+//     vrsOffset = rawTx.length - (rlpVrs.length - 1);
 
-    // First byte > 0xf7 means the length of the list length doesn't fit in a single byte.
-    if (rlpVrs[0] > 0xf7) {
-      // Increment vrsOffset to account for that extra byte.
-      vrsOffset++;
+//     // First byte > 0xf7 means the length of the list length doesn't fit in a single byte.
+//     if (rlpVrs[0] > 0xf7) {
+//       // Increment vrsOffset to account for that extra byte.
+//       vrsOffset++;
 
-      // Compute size of the list length.
-      const sizeOfListLen = rlpVrs[0] - 0xf7;
+//       // Compute size of the list length.
+//       const sizeOfListLen = rlpVrs[0] - 0xf7;
 
-      // Increase rlpOffset by the size of the list length.
-      vrsOffset += sizeOfListLen - 1;
-    }
-  }
+//       // Increase rlpOffset by the size of the list length.
+//       vrsOffset += sizeOfListLen - 1;
+//     }
+//   }
 
-  return {
-    txType,
-    chainId,
-    chainIdTruncated,
-    vrsOffset,
-  };
-}
+//   return {
+//     txType,
+//     chainId,
+//     chainIdTruncated,
+//     vrsOffset,
+//   };
+// }
 
 export const serializeSignature = (
   signature: Buffer,
@@ -146,7 +138,7 @@ const serializeNumber = (amount: number | BigNumber | undefined): Buffer => {
 const serializeTransactionPayloads = (
   path: string,
   rawTx: Buffer,
-  vrsOffset: number
+  // vrsOffset: number
 ): Buffer[] => {
   const paths = splitPath(path);
   let offset = 0;
@@ -166,10 +158,10 @@ const serializeTransactionPayloads = (
         ? rawTx.length - offset
         : MAX_CHUNK_SIZE;
 
-    if (vrsOffset != 0 && offset + chunkSize >= vrsOffset) {
-      // Make sure that the chunk doesn't end right on the EIP 155 marker if set
-      chunkSize = rawTx.length - offset;
-    }
+    // if (vrsOffset != 0 && offset + chunkSize >= vrsOffset) {
+    //   // Make sure that the chunk doesn't end right on the EIP 155 marker if set
+    //   chunkSize = rawTx.length - offset;
+    // }
 
     const buffer = Buffer.alloc(
       chunkSize
@@ -183,47 +175,24 @@ const serializeTransactionPayloads = (
   return payloads;
 };
 
-export const serializeLegacyTransaction = (
-  txn: LegacyTransaction | ValueTransfer,
+export const serializeConcordiumTransaction = (
+  txn: ConcordiumSDK.AccountTransaction,
   path: string
 ): {
   payloads: Buffer[];
-  txType: string | null;
-  chainId: BigNumber;
-  chainIdTruncated: number;
-} => {
-  const rawTxHex = txn.getRLPEncodingForSignature();
-  const rawTx = Buffer.from(rawTxHex.slice(2), "hex");
-
-  const { vrsOffset, txType, chainId, chainIdTruncated } = decodeTxInfo(
-    rawTx,
-    txn.type
-  );
-
-  const payloads = serializeTransactionPayloads(path, rawTx, vrsOffset);
-
-  return { payloads, txType, chainId, chainIdTruncated };
-};
-
-export const serializeKlaytnTransaction = (
-  txn: AbstractTransaction,
-  path: string
-): {
-  payloads: Buffer[];
-  txType: string | null;
-  chainId: BigNumber;
-  chainIdTruncated: number;
+  // txType: string | null;
+  // chainId: BigNumber;
+  // chainIdTruncated: number;
 } => {
 
-  const rlpSig = txn.getRLPEncodingForSignature();
+  const txnToString = txn.toString();
+  const rawTx = Buffer.from(txnToString, "hex");
 
-  const rawTx = Buffer.from(rlpSig.slice(2), "hex");
+  // const { vrsOffset, txType, chainId, chainIdTruncated } = decodeTxInfo(
+  //   rawTx,
+  //   txn.type.toString()
+  // );
+  const payloads = serializeTransactionPayloads(path, rawTx);
 
-  const { vrsOffset, txType, chainId, chainIdTruncated } = decodeTxInfo(
-    rawTx,
-    txn.type
-  );
-  const payloads = serializeTransactionPayloads(path, rawTx, vrsOffset);
-
-  return { payloads, txType, chainId, chainIdTruncated };
+  return { payloads };
 };
