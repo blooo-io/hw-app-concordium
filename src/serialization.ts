@@ -1,6 +1,7 @@
 import * as ConcordiumSDK from "@concordium/web-sdk";
 import BigNumber from "bignumber.js";
 import BIPPath from "bip32-path";
+import { serializeAccountTransaction } from "./utils";
 
 const MAX_CHUNK_SIZE = 255;
 
@@ -180,19 +181,12 @@ export const serializeConcordiumTransaction = (
   path: string
 ): {
   payloads: Buffer[];
-  // txType: string | null;
-  // chainId: BigNumber;
-  // chainIdTruncated: number;
 } => {
 
-  const txnToString = txn.toString();
-  const rawTx = Buffer.from(txnToString, "hex");
-
-  // const { vrsOffset, txType, chainId, chainIdTruncated } = decodeTxInfo(
-  //   rawTx,
-  //   txn.type.toString()
-  // );
-  const payloads = serializeTransactionPayloads(path, rawTx);
+  const txSerialized = serializeAccountTransaction(txn);
+  const payloads = serializeTransactionPayloads(path, txSerialized);
+  console.log("GUI Payload: ",payloads);
+  
 
   return { payloads };
 };

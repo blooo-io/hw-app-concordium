@@ -1,6 +1,8 @@
 // import Concordium from "./src/Concordium";
-import { AccountAddress, AccountTransactionType, CcdAmount, SequenceNumber, serializeAccountTransactionPayload, serializeAccountTransaction, TransactionExpiry } from "@concordium/web-sdk";
-
+import { AccountAddress, AccountTransactionType, CcdAmount, SequenceNumber, TransactionExpiry } from "@concordium/web-sdk";
+import { serializeAccountTransaction } from "./lib-es/utils.js";
+import { encodeInt32, encodeInt8 } from "@concordium/common-sdk/lib/serializationHelpers.js";
+import { serializeConcordiumTransaction } from "./lib-es/serialization.js"
 // import { createTransport } from "@ledgerhq/hw-transport-mocker";
 
 // const transport = createTransport();
@@ -39,9 +41,24 @@ const sender = AccountAddress.fromBase58(test_sender_address);
     payload: simpleTransfer,
     type: AccountTransactionType.Transfer,
   };
+  const idEncoded = encodeInt32(0);
+  const credEncoded = encodeInt32(0);
+console.log("GUI TEST", Buffer.concat([idEncoded,credEncoded]).toString("hex"));
 
-const txSerialized = serializeAccountTransaction(accountTransaction, "");
-console.log("Hex transaction", txSerialized);
+
+  const transaction = {
+    sender,
+    nonce: nonce.toString(),
+    expiry: BigInt(123456),
+    energyAmount: '1234',
+    transactionKind: AccountTransactionType.Transfer,
+    payload: simpleTransfer,
+};
+const txSerialized = serializeAccountTransaction(transaction);
+console.log("Hex transaction", txSerialized.toString('hex'));
+
+const trx = serializeConcordiumTransaction(transaction, "44'/919'/0'/0/0")
+console.log("GUI TX: ", trx);
 
 // const tx = Buffer.from(,txSerialized])
 // console.log("Transaction", tx);

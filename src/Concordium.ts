@@ -6,13 +6,16 @@ import {
   serializeConcordiumTransaction,
 } from "./serialization";
 import BigNumber from "bignumber.js";
-import * as ConcordiumSDK from "@concordium/web-sdk";
+import { encodeInt32 } from "./utils";
 
 const LEDGER_CLA = 0xe0;
-const CLA_OFFSET = 0x00;
 
 // FOR GET VERSION AND APP NAME
 const NONE = 0x00;
+
+// FOR VERIFY ADRESS
+const P1_LEGACY_VERIFY_ADDRESS = 0x00;
+const P1_VERIFY_ADDRESS = 0x01;
 
 // FOR GET PUBLIC KEY
 const P1_NON_CONFIRM = 0x00;
@@ -24,13 +27,15 @@ const P2_MORE = 0x80;
 const P2_LAST = 0x00;
 
 const INS = {
+  VERIFY_ADDRESS: 0x00,
   GET_VERSION: 0x03,
   GET_APP_NAME: 0x04,
   GET_PUBLIC_KEY: 0x05,
   SIGN_TX: 0x06,
 };
 
-const concordium_path = "1105'/0'/0'/0/";
+const concordium_path = "44'/919'/0'/0/";
+const concordium_legacy_path = "1105'/0'/0'/0/";
 
 /**
  * Concordium API
@@ -55,6 +60,7 @@ export default class Concordium {
       [
         "getVersion",
         "getAddress",
+        "verifyAddress",
         "signTransaction",
       ],
       scrambleKey
@@ -78,6 +84,51 @@ export default class Concordium {
     );
     return {
       version: `${major}.${minor}.${patch}`,
+    };
+  }
+
+  /**
+   * Legacy Verify address.
+   *
+   * @returns status
+   *
+   * @example
+   * concordium.verifyAddressLegacy().then(r => r.status)
+   */
+  async verifyAddressLegacy(id: number, cred: number): Promise<{ status: string }> {
+    const idEncoded = encodeInt32(id);
+    const credEncoded = encodeInt32(cred);
+    const statusResult = await this.sendToDevice(
+      INS.VERIFY_ADDRESS,
+      P1_LEGACY_VERIFY_ADDRESS,
+      NONE,
+      Buffer.concat([idEncoded,credEncoded])
+    );
+    return {
+      status: `${statusResult}`,
+    };
+  }
+
+  /**
+   * Verify address.
+   *
+   * @returns status
+   *
+   * @example
+   * concordium.verifyAddress().then(r => r.status)
+   */
+  async verifyAddress(idp:number, id: number, cred: number): Promise<{ status: string }> {
+    const idEncoded = encodeInt32(id);
+    const idpEncoded = encodeInt32(idp);
+    const credEncoded = encodeInt32(cred);
+    const statusResult = await this.sendToDevice(
+      INS.VERIFY_ADDRESS,
+      P1_VERIFY_ADDRESS,
+      NONE,
+      Buffer.concat([idpEncoded, idEncoded, credEncoded])
+    );
+    return {
+      status: `${statusResult}`,
     };
   }
 
@@ -124,11 +175,11 @@ export default class Concordium {
           )
           .toString("ascii"),
       chainCode: addressBuffer
-            .subarray(
-              1 + publicKeyLength + 1 + addressLength + 1,
-              1 + publicKeyLength + 1 + addressLength + chainCodeLength
-            )
-            .toString("hex"),
+        .subarray(
+          1 + publicKeyLength + 1 + addressLength + 1,
+          1 + publicKeyLength + 1 + addressLength + chainCodeLength
+        )
+        .toString("hex"),
     };
   }
 
@@ -136,16 +187,19 @@ export default class Concordium {
    * Signs a Concordium transaction using the specified account index.
    * @param txn - The transaction to sign.
    * @param accountIndex - The index of the account to use for signing. Default is 0.
+   * @param isLgacyPath - Boolean if true use the legacy derivation path.
    * @returns An object containing the signature and the signed transaction.
    * @throws Error if the user declines the transaction.
    * @example
    * concordium.signTransfer(txn).then(r => r.signature)
    */
-  async signTransfer(txn:ConcordiumSDK.AccountTransaction, accountIndex=0): Promise<{ signature: string[]; transaction: ConcordiumSDK.AccountTransaction }> {
+  async signTransfer(txn, isLegacyPath: boolean ,accountIndex = 0 ): Promise<{ signature: string[]; transaction }> {
 
-    const { payloads } = serializeConcordiumTransaction(txn, concordium_path + accountIndex);
+    const path = isLegacyPath ? concordium_legacy_path : concordium_path
 
-    let response = Buffer.from([1,2,3]);
+    const { payloads } = serializeConcordiumTransaction(txn, path + accountIndex);
+
+    let response;
 
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
@@ -159,7 +213,7 @@ export default class Concordium {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const signature= [""];
+    const signature = [""];
     // const signature = this.serializeAndFormatSignature(
     //   response,
     //   chainId,
@@ -169,7 +223,7 @@ export default class Concordium {
 
 
     return {
-      signature: signature,
+      signature: response,
       transaction: txn,
     };
   }
