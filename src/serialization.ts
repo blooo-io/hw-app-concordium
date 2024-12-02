@@ -1,8 +1,7 @@
-import BigNumber from "bignumber.js";
 import BIPPath from "bip32-path";
 import { serializeAccountTransaction } from "./utils";
 import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
-import { Buffer as NodeBuffer } from 'buffer/';
+import { Buffer as NodeBuffer } from 'buffer/index';
 const MAX_CHUNK_SIZE = 255;
 
 const serializePath = (path: number[]): Buffer => {
@@ -82,7 +81,7 @@ export const serializeSimpleTransferWithMemo = (txn: any, path: string): { paylo
   const memo: string = txn.payload.memo;
   const memoBuffer = NodeBuffer.from(memo, 'utf-8');
   // Encode the buffer as a DataBlob
-  txn.memo = new DataBlob(memoBuffer);
+  txn.payload.memo = new DataBlob(memoBuffer);
 
   return serializeTransaction(txn, path);
 };
@@ -91,6 +90,19 @@ export const serializeConfigureDelegation = (txn: any, path: string): { payloads
   return serializeTransaction(txn, path);
 };
 
+export const serializeConfigureBaker = (txn: any, path: string): { payloads: Buffer[] } => {
+  return serializeTransaction(txn, path);
+};
+
 export const serializeTransferWithSchedule = (txn: any, path: string): { payloads: Buffer[] } => {
+  return serializeTransaction(txn, path);
+};
+
+export const serializeTransferWithScheduleAndMemo = (txn: any, path: string): { payloads: Buffer[] } => {
+  // Convert the string to a buffer
+  const memo: string = txn.payload.memo;
+  const memoBuffer = NodeBuffer.from(memo, 'utf-8');
+  // Encode the buffer as a DataBlob
+  txn.payload.memo = new DataBlob(memoBuffer);
   return serializeTransaction(txn, path);
 };

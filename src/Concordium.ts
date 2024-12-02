@@ -6,6 +6,8 @@ import {
   serializeSimpleTransfer,
   serializeSimpleTransferWithMemo,
   serializeTransferWithSchedule,
+  serializeConfigureBaker,
+  serializeTransferWithScheduleAndMemo
 } from "./serialization";
 import BigNumber from "bignumber.js";
 import { encodeInt32 } from "./utils";
@@ -34,7 +36,12 @@ const INS = {
   GET_PUBLIC_KEY: 0x01,
   GET_VERSION: 0x03,
   GET_APP_NAME: 0x04,
-  SIGN_TX: 0x06,
+  SIGN_TRANSFER: 0x06,
+  SIGN_TRANSFER_MEMO: 0x06,
+  SIGN_TRANSFER_SCHEDULE: 0x06,
+  SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x06,
+  SIGN_CONFIGURE_DELEGATION: 0x06,
+  SIGN_CONFIGURE_BAKER: 0x06,
 };
 
 const concordium_path = "44'/919'/0'/0/0/0";
@@ -150,7 +157,7 @@ export default class Concordium {
    * @example
    * concordium.getPublicKey("1105'/0'/0'/0/0/0/0/", true, false)
    */
-  async getPublicKey(path: string, display?: boolean, signedKey?: boolean): Promise<{ publicKey: string }> {
+  async getPublicKey(path: string, display?: boolean, signedKey?: boolean): Promise<{ publicKey: string, signedPublicKey?: string }> {
     const pathBuffer = pathToBuffer(path);
 
     const publicKeyBuffer = await this.sendToDevice(
@@ -161,6 +168,13 @@ export default class Concordium {
     );
 
     const publicKeyLength = publicKeyBuffer[0];
+
+    if (signedKey) {
+      return {
+        publicKey: publicKeyBuffer.subarray(1, 1 + publicKeyLength).toString("hex"),
+        signedPublicKey: publicKeyBuffer.subarray(1 + publicKeyLength).toString("hex"),
+      };
+    }
 
     return {
       publicKey: publicKeyBuffer.subarray(1, 1 + publicKeyLength).toString("hex"),
@@ -185,7 +199,7 @@ export default class Concordium {
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
       response = await this.sendToDevice(
-        INS.SIGN_TX,
+        INS.SIGN_TRANSFER,
         P1_FIRST_CHUNK + i,
         lastChunk ? P2_LAST : P2_MORE,
         payloads[i]
@@ -212,7 +226,7 @@ export default class Concordium {
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
       response = await this.sendToDevice(
-        INS.SIGN_TX,
+        INS.SIGN_TRANSFER_MEMO,
         P1_FIRST_CHUNK + i,
         lastChunk ? P2_LAST : P2_MORE,
         payloads[i]
@@ -238,7 +252,34 @@ export default class Concordium {
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
       response = await this.sendToDevice(
-        INS.SIGN_TX,
+        INS.SIGN_TRANSFER_SCHEDULE,
+        P1_FIRST_CHUNK + i,
+        lastChunk ? P2_LAST : P2_MORE,
+        payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    const transaction = payloads.slice(1);
+
+    return {
+      signature: response.toString("hex"),
+      transaction: Buffer.concat(transaction).toString("hex"),
+    };
+  }
+
+  async signTransferWithScheduleAndMemo(txn, path: string): Promise<{ signature: string[]; transaction }> {
+
+
+    const { payloads } = serializeTransferWithScheduleAndMemo(txn, path);
+
+    let response;
+
+    for (let i = 0; i < payloads.length; i++) {
+      const lastChunk = i === payloads.length - 1;
+      response = await this.sendToDevice(
+        INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
         P1_FIRST_CHUNK + i,
         lastChunk ? P2_LAST : P2_MORE,
         payloads[i]
@@ -265,7 +306,35 @@ export default class Concordium {
     for (let i = 0; i < payloads.length; i++) {
       const lastChunk = i === payloads.length - 1;
       response = await this.sendToDevice(
-        INS.SIGN_TX,
+        INS.SIGN_CONFIGURE_DELEGATION,
+        P1_FIRST_CHUNK + i,
+        lastChunk ? P2_LAST : P2_MORE,
+        payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    const transaction = payloads.slice(1);
+
+
+    return {
+      signature: response.toString("hex"),
+      transaction: Buffer.concat(transaction).toString("hex"),
+    };
+  }
+
+  async signConfigureBaker(txn, path: string): Promise<{ signature: string[]; transaction }> {
+
+
+    const { payloads } = serializeConfigureBaker(txn, path);
+
+    let response;
+
+    for (let i = 0; i < payloads.length; i++) {
+      const lastChunk = i === payloads.length - 1;
+      response = await this.sendToDevice(
+        INS.SIGN_CONFIGURE_BAKER,
         P1_FIRST_CHUNK + i,
         lastChunk ? P2_LAST : P2_MORE,
         payloads[i]
