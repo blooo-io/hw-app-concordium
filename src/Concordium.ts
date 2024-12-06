@@ -33,6 +33,8 @@ const P2_SIGNED_KEY = 0x01;
 // FOR SIGN TRANSACTION
 const P1_FIRST_CHUNK = 0x00;
 const P1_INITIAL_WITH_MEMO = 0x01;
+const P1_INITIAL_WITH_MEMO_SCHEDULE = 0x02;
+const P1_MEMO_SCHEDULE = 0x03;
 const P1_REMAINING_AMOUNT = 0x01;
 const P1_DATA = 0x01;
 const P1_PROOF = 0x02;
@@ -292,30 +294,38 @@ export default class Concordium {
     };
   }
 
-  async signTransferWithScheduleAndMemo(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signTransferWithScheduleAndMemo(txn, path: string): Promise<{ signature: string[] }> {
 
 
-    const { payloads } = serializeTransferWithScheduleAndMemo(txn, path);
+    const { payloadHeaderAddressScheduleLengthAndMemoLength, payloadMemo, payloadsSchedule } = serializeTransferWithScheduleAndMemo(txn, path);
 
     let response;
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
+      P1_INITIAL_WITH_MEMO_SCHEDULE,
+      NONE,
+      payloadHeaderAddressScheduleLengthAndMemoLength[0]
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
+      P1_MEMO_SCHEDULE,
+      NONE,
+      payloadMemo[0]
+    );
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
+    for (let i = 0; i < payloadsSchedule.length; i++) {
       response = await this.sendToDevice(
         INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
+        P1_SCHEDULED_TRANSFER_PAIRS,
+        NONE,
+        payloadsSchedule[i]
       );
     }
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 

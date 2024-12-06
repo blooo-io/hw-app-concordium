@@ -169,13 +169,42 @@ export const serializeConfigureBaker = (txn: any, path: string): { payloads: Buf
 };
 
 
-export const serializeTransferWithScheduleAndMemo = (txn: any, path: string): { payloads: Buffer[] } => {
+export const serializeTransferWithScheduleAndMemo = (txn: any, path: string): { payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] } => {
   // Convert the string to a buffer
   const memo: string = txn.payload.memo;
   const memoBuffer = NodeBuffer.from(memo, 'utf-8');
   // Encode the buffer as a DataBlob
   txn.payload.memo = new DataBlob(memoBuffer);
-  return serializeTransaction(txn, path);
+
+  const toAddressBuffer = AccountAddress.toBuffer(txn.payload.toAddress);
+  const scheduleLength = encodeInt8(txn.payload.schedule.length);
+  const scheduleBufferArray = txn.payload.schedule.map((item: { timestamp: string, amount: string }) => {
+    const timestampBuffer = encodeWord64(item.timestamp);
+    const amountBuffer = encodeWord64(item.amount);
+    return Buffer.concat([timestampBuffer, amountBuffer]);
+  });
+
+  const serializedSchedule = Buffer.concat([...scheduleBufferArray]);
+  const serializedMemo = encodeDataBlob(txn.payload.memo);
+  const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
+
+  const payloadSize = serializedType.length + scheduleLength.length + serializedSchedule.length + toAddressBuffer.length + serializedMemo.length;
+  const serializedHeader = serializeAccountTransactionHeader(txn, payloadSize);
+  const serializedHeaderAddressScheduleLengthAndMemoLength = Buffer.concat([serializedHeader, serializedType, toAddressBuffer, scheduleLength, serializedMemo.subarray(0, 2)]);
+
+  const payloadHeaderAddressScheduleLengthAndMemoLength = serializeTransactionPayloadsWithDerivationPath(path, serializedHeaderAddressScheduleLengthAndMemoLength);
+  const payloadMemo = serializeTransactionPayloads(serializedMemo.subarray(2));
+  const payloadsSchedule: Buffer[] = [];
+
+  let remainingPairs = txn.payload.schedule.length
+  for (let i = 0; i < scheduleBufferArray.length; i += MAX_SCHEDULE_CHUNK_SIZE) {
+    const offset = remainingPairs > MAX_SCHEDULE_CHUNK_SIZE ? MAX_SCHEDULE_CHUNK_SIZE : remainingPairs
+    const scheduleChunk = serializeTransactionPayloads(serializedSchedule.subarray(i * 16, (i + offset) * 16));
+    payloadsSchedule.push(...scheduleChunk);
+    remainingPairs = txn.payload.schedule.length - MAX_SCHEDULE_CHUNK_SIZE
+  }
+
+  return { payloadHeaderAddressScheduleLengthAndMemoLength, payloadMemo, payloadsSchedule };
 };
 
 export const serializeRegisterData = (txn: any, path: string): { payloadHeader: Buffer[], payloadsData: Buffer[] } => {
