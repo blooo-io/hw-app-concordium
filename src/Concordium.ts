@@ -7,7 +7,11 @@ import {
   serializeSimpleTransferWithMemo,
   serializeTransferWithSchedule,
   serializeConfigureBaker,
-  serializeTransferWithScheduleAndMemo
+  serializeTransferWithScheduleAndMemo,
+  serializeRegisterData,
+  serializeTransferToPublic,
+  serializeDeployModule,
+  serializeInitContract
 } from "./serialization";
 import BigNumber from "bignumber.js";
 import { encodeInt32 } from "./utils";
@@ -28,24 +32,33 @@ const P2_SIGNED_KEY = 0x01;
 
 // FOR SIGN TRANSACTION
 const P1_FIRST_CHUNK = 0x00;
+const P1_INITIAL_WITH_MEMO = 0x01;
+const P1_REMAINING_AMOUNT = 0x01;
+const P1_DATA = 0x01;
+const P1_PROOF = 0x02;
+const P1_MEMO = 0x02;
+const P1_AMOUNT = 0x03;
 const P2_MORE = 0x80;
 const P2_LAST = 0x00;
+const P1_INITIAL_PACKET = 0x00;
+const P1_SCHEDULED_TRANSFER_PAIRS = 0x01;
 
 const INS = {
+  // GET_VERSION: 0x03,
   VERIFY_ADDRESS: 0x00,
   GET_PUBLIC_KEY: 0x01,
-  GET_VERSION: 0x03,
-  GET_APP_NAME: 0x04,
-  SIGN_TRANSFER: 0x06,
-  SIGN_TRANSFER_MEMO: 0x06,
-  SIGN_TRANSFER_SCHEDULE: 0x06,
-  SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x06,
-  SIGN_CONFIGURE_DELEGATION: 0x06,
-  SIGN_CONFIGURE_BAKER: 0x06,
+  SIGN_TRANSFER: 0x02,
+  SIGN_TRANSFER_SCHEDULE: 0x03,
+  SIGN_TRANSFER_TO_PUBLIC: 0x12,
+  SIGN_CONFIGURE_DELEGATION: 0x17,
+  SIGN_CONFIGURE_BAKER: 0x18,
+  GET_APP_NAME: 0x21,
+  SIGN_TRANSFER_MEMO: 0x32,
+  SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x34,
+  SIGN_REGISTER_DATA: 0x35,
+  SIGN_DEPLOY_MODULE: 0x06,
+  SIGN_INIT_CONTRACT: 0x06,
 };
-
-const concordium_path = "44'/919'/0'/0/0/0";
-const concordium_legacy_path = "1105'/0'/0'/0/";
 
 /**
  * Concordium API
@@ -77,25 +90,25 @@ export default class Concordium {
     );
   }
 
-  /**
-   * Get application version.
-   *
-   * @returns version object
-   *
-   * @example
-   * concordium.getVersion().then(r => r.version)
-   */
-  async getVersion(): Promise<{ version: string }> {
-    const [major, minor, patch] = await this.sendToDevice(
-      INS.GET_VERSION,
-      NONE,
-      NONE,
-      Buffer.from([])
-    );
-    return {
-      version: `${major}.${minor}.${patch}`,
-    };
-  }
+  // /**
+  //  * Get application version.
+  //  *
+  //  * @returns version object
+  //  *
+  //  * @example
+  //  * concordium.getVersion().then(r => r.version)
+  //  */
+  // async getVersion(): Promise<{ version: string }> {
+  //   const [major, minor, patch] = await this.sendToDevice(
+  //     INS.GET_VERSION,
+  //     NONE,
+  //     NONE,
+  //     Buffer.from([])
+  //   );
+  //   return {
+  //     version: `${major}.${minor}.${patch}`,
+  //   };
+  // }
 
   /**
    * Legacy Verify address.
@@ -162,7 +175,7 @@ export default class Concordium {
 
     const publicKeyBuffer = await this.sendToDevice(
       INS.GET_PUBLIC_KEY,
-      display ? P1_CONFIRM : P1_NON_CONFIRM,
+      display ? P1_NON_CONFIRM : P1_CONFIRM,
       signedKey ? P2_SIGNED_KEY : NONE,
       pathBuffer
     );
@@ -216,56 +229,66 @@ export default class Concordium {
     };
   }
 
-  async signTransferWithMemo(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signTransferWithMemo(txn, path: string): Promise<{ signature: string[] }> {
 
 
-    const { payloads } = serializeSimpleTransferWithMemo(txn, path);
+    const { payloadHeaderAddressMemoLength, payloadsMemo, payloadsAmount } = serializeSimpleTransferWithMemo(txn, path);
 
     let response;
-
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
-      response = await this.sendToDevice(
-        INS.SIGN_TRANSFER_MEMO,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
-      );
-    }
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_MEMO,
+      P1_INITIAL_WITH_MEMO,
+      NONE,
+      payloadHeaderAddressMemoLength[0]
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_MEMO,
+      P1_MEMO,
+      NONE,
+      payloadsMemo[0]
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_MEMO,
+      P1_AMOUNT,
+      NONE,
+      payloadsAmount[0]
+    );
 
     if (response.length === 1) throw new Error("User has declined.");
-    const transaction = payloads.slice(1);
 
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
-  async signTransferWithSchedule(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signTransferWithSchedule(txn, path: string): Promise<{ signature: string[] }> {
 
 
-    const { payloads } = serializeTransferWithSchedule(txn, path);
+    const { payloadHeaderAddressScheduleLength, payloadsSchedule } = serializeTransferWithSchedule(txn, path);
 
     let response;
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_SCHEDULE,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadHeaderAddressScheduleLength[0]
+    );
+
+    for (let i = 0; i < payloadsSchedule.length; i++) {
+      const lastChunk = i === payloadsSchedule.length - 1;
       response = await this.sendToDevice(
         INS.SIGN_TRANSFER_SCHEDULE,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
+        P1_SCHEDULED_TRANSFER_PAIRS,
+        NONE,
+        payloadsSchedule[i]
       );
     }
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
@@ -296,7 +319,7 @@ export default class Concordium {
     };
   }
 
-  async signConfigureDelegation(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signConfigureDelegation(txn, path: string): Promise<{ signature: string[] }> {
 
 
     const { payloads } = serializeConfigureDelegation(txn, path);
@@ -315,17 +338,12 @@ export default class Concordium {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
   async signConfigureBaker(txn, path: string): Promise<{ signature: string[]; transaction }> {
-
 
     const { payloads } = serializeConfigureBaker(txn, path);
 
@@ -345,6 +363,122 @@ export default class Concordium {
 
     const transaction = payloads.slice(1);
 
+
+    return {
+      signature: response.toString("hex"),
+      transaction: Buffer.concat(transaction).toString("hex"),
+    };
+  }
+
+  async signRegisterData(txn, path: string): Promise<{ signature: string[] }> {
+
+    const { payloadHeader, payloadsData } = serializeRegisterData(txn, path);
+
+    let response;
+    response = await this.sendToDevice(
+      INS.SIGN_REGISTER_DATA,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadHeader[0]
+    );
+
+    for (let i = 0; i < payloadsData.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_REGISTER_DATA,
+        P1_DATA,
+        NONE,
+        payloadsData[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
+    };
+  }
+
+  async signTransferToPublic(txn, path: string): Promise<{ signature: string[] }> {
+
+    const { payloadHeader, payloadsAmountAndProofsLength, payloadsProofs } = serializeTransferToPublic(txn, path);
+
+    let response;
+
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_TO_PUBLIC,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadHeader[0]
+    );
+
+    response = await this.sendToDevice(
+      INS.SIGN_TRANSFER_TO_PUBLIC,
+      P1_REMAINING_AMOUNT,
+      NONE,
+      payloadsAmountAndProofsLength[0]
+    );
+
+    for (let i = 0; i < payloadsProofs.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_TRANSFER_TO_PUBLIC,
+        P1_PROOF,
+        NONE,
+        payloadsProofs[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
+    };
+  }
+
+  async signDeployModule(txn, path: string): Promise<{ signature: string[]; transaction }> {
+
+    const { payloads } = serializeDeployModule(txn, path);
+
+    let response;
+
+    for (let i = 0; i < payloads.length; i++) {
+      const lastChunk = i === payloads.length - 1;
+      response = await this.sendToDevice(
+        INS.SIGN_DEPLOY_MODULE,
+        P1_FIRST_CHUNK + i,
+        lastChunk ? P2_LAST : P2_MORE,
+        payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    const transaction = payloads.slice(1);
+
+    return {
+      signature: response.toString("hex"),
+      transaction: Buffer.concat(transaction).toString("hex"),
+    };
+  }
+
+  async signInitContract(txn, path: string): Promise<{ signature: string[]; transaction }> {
+
+    const { payloads } = serializeInitContract(txn, path);
+
+    let response;
+
+    for (let i = 0; i < payloads.length; i++) {
+      const lastChunk = i === payloads.length - 1;
+      response = await this.sendToDevice(
+        INS.SIGN_INIT_CONTRACT,
+        P1_FIRST_CHUNK + i,
+        lastChunk ? P2_LAST : P2_MORE,
+        payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    const transaction = payloads.slice(1);
 
     return {
       signature: response.toString("hex"),

@@ -79,7 +79,7 @@ export function encodeWord32(value, useLittleEndian = false) {
  */
 export function encodeWord16(value, useLittleEndian = false) {
   if (value > 65535 || value < 0 || !Number.isInteger(value)) {
-      throw new Error('The input has to be a 16 bit unsigned integer but it was: ' + value);
+    throw new Error('The input has to be a 16 bit unsigned integer but it was: ' + value);
   }
   const arr = new ArrayBuffer(2);
   const view = new DataView(arr);
@@ -126,7 +126,30 @@ function serializeScheduleAndMemo(payload: any) {
   });
   const serializedMemo = encodeDataBlob(payload.memo);
 
-  return Buffer.concat([toAddressBuffer, serializedMemo, scheduleLength, ...bufferArray]);
+  return {
+    addressAndMemo: Buffer.concat([toAddressBuffer, serializedMemo]),
+    schedule: Buffer.concat([scheduleLength, ...bufferArray]),
+  };
+}
+
+function serializeTransferWithMemo(payload: any) {
+  const serializedToAddress = AccountAddress.toBuffer(payload.toAddress);
+  const serializedMemo = encodeDataBlob(payload.memo);
+  const serializedAmount = encodeWord64(payload.amount.microCcdAmount);
+
+  return {
+    addressAndMemo: Buffer.concat([serializedToAddress, serializedMemo]),
+    amount: serializedAmount,
+  };
+}
+
+function serializeTransferToPublic(payload: any) {
+  const remainingAmount = Buffer.from(payload.remainingAmount, 'hex');
+  const transferAmount = encodeWord64(payload.transferAmount.microCcdAmount);
+  const index = encodeWord64(payload.index);
+  const proofs = Buffer.from(payload.proofs, 'hex');
+  const proofsLength = encodeWord16(proofs.length);
+  return Buffer.concat([remainingAmount, transferAmount, index, proofsLength, proofs]);
 }
 
 /**
@@ -137,7 +160,7 @@ function serializeScheduleAndMemo(payload: any) {
  * @param payloadSize the byte size of the serialized payload
  * @returns the serialized account transaction header
  */
-const serializeAccountTransactionHeader = (accountTransaction, payloadSize) => {
+export const serializeAccountTransactionHeader = (accountTransaction, payloadSize) => {
   const serializedSender = AccountAddress.toBuffer(accountTransaction.sender);
   const serializedNonce = encodeWord64(accountTransaction.nonce);
   const serializedEnergyAmount = encodeWord64(accountTransaction.energyAmount);
@@ -164,13 +187,17 @@ export const serializeAccountTransaction = (accountTransaction) => {
   const serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
   let serializedPayload;
 
-  if (isAccountTransactionHandlerExists(accountTransaction.transactionKind)) {
+  if (isAccountTransactionHandlerExists(accountTransaction.transactionKind) && accountTransaction.transactionKind !== AccountTransactionType.TransferWithMemo) {
     const accountTransactionHandler = getAccountTransactionHandler(accountTransaction.transactionKind);
     serializedPayload = accountTransactionHandler.serialize(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithSchedule) {
     serializedPayload = serializeSchedule(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithScheduleAndMemo) {
     serializedPayload = serializeScheduleAndMemo(accountTransaction.payload);
+  } else if (accountTransaction.transactionKind === AccountTransactionType.TransferToPublic) {
+    serializedPayload = serializeTransferToPublic(accountTransaction.payload);
+  } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithMemo) {
+    serializedPayload = serializeTransferWithMemo(accountTransaction.payload);
   }
 
   const serializedHeader = serializeAccountTransactionHeader(accountTransaction, serializedPayload.length + 1);
