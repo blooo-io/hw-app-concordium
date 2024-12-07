@@ -3,8 +3,22 @@ import { encodeDataBlob, encodeInt8, encodeWord16, encodeWord64, serializeAccoun
 import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
 import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountAddress } from "@concordium/web-sdk";
+
 const MAX_CHUNK_SIZE = 255;
 const MAX_SCHEDULE_CHUNK_SIZE = 15;
+const HEADER_LENGTH = 60;
+const TRANSACTION_KIND_LENGTH = 1;
+const BITMAP_LENGTH = 2;
+const STAKING_PAYLOAD_LENGTH = 8;
+const RESTAKE_EARNINGS_PAYLOAD_LENGTH = 1;
+const OPEN_FOR_DELEGATION_PAYLOAD_LENGTH = 1;
+const KEYS_AGGREGATION_LENGTH = 160;
+const KEYS_ELECTION_AND_SIGNATURE_LENGTH = 192;
+const KEYS_PAYLOAD_LENGTH = KEYS_ELECTION_AND_SIGNATURE_LENGTH + KEYS_AGGREGATION_LENGTH;
+const METADATA_URL_LENGTH = 2;
+const TRANSACTION_FEE_COMMISSION_LENGTH = 4;
+const BAKING_REWARD_COMMISSION_LENGTH = 4;
+const FINALIZATION_REWARD_COMMISSION_LENGTH = 4;
 
 const serializePath = (path: number[]): Buffer => {
   const buf = Buffer.alloc(1 + path.length * 4);
@@ -164,8 +178,64 @@ export const serializeConfigureDelegation = (txn: any, path: string): { payloads
   return serializeTransaction(txn, path);
 };
 
-export const serializeConfigureBaker = (txn: any, path: string): { payloads: Buffer[] } => {
-  return serializeTransaction(txn, path);
+export const serializeConfigureBaker = (txn: any, path: string): { payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer } => {
+  let stake: Buffer = Buffer.alloc(0);
+  let restakeEarnings: Buffer = Buffer.alloc(0);
+  let openForDelegation: Buffer = Buffer.alloc(0);
+  let keys: Buffer = Buffer.alloc(0);
+  let metadataUrl: Buffer = Buffer.alloc(0);
+  let url: Buffer = Buffer.alloc(0);
+  let transactionFeeCommission: Buffer = Buffer.alloc(0);
+  let bakingRewardCommission: Buffer = Buffer.alloc(0);
+  let finalizationRewardCommission: Buffer = Buffer.alloc(0);
+  let offset: number = 0;
+
+  const txSerialized = serializeAccountTransaction(txn);
+  const headerKindAndBitmap = txSerialized.subarray(0, HEADER_LENGTH + TRANSACTION_KIND_LENGTH + BITMAP_LENGTH);
+  offset += HEADER_LENGTH + TRANSACTION_KIND_LENGTH + BITMAP_LENGTH;
+  if (txn.payload.hasOwnProperty('stake')) {
+    stake = txSerialized.subarray(offset, offset + STAKING_PAYLOAD_LENGTH);
+    offset += STAKING_PAYLOAD_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('restakeEarnings')) {
+    restakeEarnings = txSerialized.subarray(offset, offset + RESTAKE_EARNINGS_PAYLOAD_LENGTH);
+    offset += RESTAKE_EARNINGS_PAYLOAD_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('openForDelegation')) {
+    openForDelegation = txSerialized.subarray(offset, offset + OPEN_FOR_DELEGATION_PAYLOAD_LENGTH);
+    offset += OPEN_FOR_DELEGATION_PAYLOAD_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('keys')) {
+    keys = txSerialized.subarray(offset, offset + KEYS_PAYLOAD_LENGTH);
+    offset += KEYS_PAYLOAD_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('metadataUrl')) {
+    metadataUrl = txSerialized.subarray(offset, offset + METADATA_URL_LENGTH);
+    offset += METADATA_URL_LENGTH;
+    url = txSerialized.subarray(offset, offset + metadataUrl.readUInt16BE(0));
+    offset += metadataUrl.readUInt16BE(0);
+  }
+  if (txn.payload.hasOwnProperty('transactionFeeCommission')) {
+    transactionFeeCommission = txSerialized.subarray(offset, offset + TRANSACTION_FEE_COMMISSION_LENGTH);
+    offset += TRANSACTION_FEE_COMMISSION_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('bakingRewardCommission')) {
+    bakingRewardCommission = txSerialized.subarray(offset, offset + BAKING_REWARD_COMMISSION_LENGTH);
+    offset += BAKING_REWARD_COMMISSION_LENGTH;
+  }
+  if (txn.payload.hasOwnProperty('finalizationRewardCommission')) {
+    finalizationRewardCommission = txSerialized.subarray(offset, offset + FINALIZATION_REWARD_COMMISSION_LENGTH);
+    offset += FINALIZATION_REWARD_COMMISSION_LENGTH;
+  }
+
+  const payloadHeaderKindAndBitmap = serializeTransactionPayloadsWithDerivationPath(path, headerKindAndBitmap);
+  const payloadFirstBatch = Buffer.concat([stake, restakeEarnings, openForDelegation, keys.subarray(0, KEYS_ELECTION_AND_SIGNATURE_LENGTH)]);
+  const payloadAggregationKeys = keys.subarray(KEYS_ELECTION_AND_SIGNATURE_LENGTH);
+  const payloadUrlLength = metadataUrl;
+  const payloadURL = url;
+  const payloadCommissionFee = Buffer.concat([transactionFeeCommission, bakingRewardCommission, finalizationRewardCommission]);
+
+  return { payloadHeaderKindAndBitmap: payloadHeaderKindAndBitmap[0], payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee };
 };
 
 

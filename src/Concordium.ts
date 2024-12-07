@@ -31,6 +31,12 @@ const P1_CONFIRM = 0x01;
 const P2_SIGNED_KEY = 0x01;
 
 // FOR SIGN TRANSACTION
+const P1_FIRST_BATCH = 0x01;
+const P1_AGGREGATION_KEY = 0x02;
+const P1_URL_LENGTH = 0x03;
+const P1_URL = 0x04;
+const P1_COMMISSION_FEE = 0x05;
+
 const P1_FIRST_CHUNK = 0x00;
 const P1_INITIAL_WITH_MEMO = 0x01;
 const P1_INITIAL_WITH_MEMO_SCHEDULE = 0x02;
@@ -44,6 +50,7 @@ const P2_MORE = 0x80;
 const P2_LAST = 0x00;
 const P1_INITIAL_PACKET = 0x00;
 const P1_SCHEDULED_TRANSFER_PAIRS = 0x01;
+
 
 const INS = {
   // GET_VERSION: 0x03,
@@ -353,30 +360,53 @@ export default class Concordium {
     };
   }
 
-  async signConfigureBaker(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signConfigureBaker(txn, path: string): Promise<{ signature: string[] }> {
 
-    const { payloads } = serializeConfigureBaker(txn, path);
+    const { payloadHeaderKindAndBitmap, payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee } = serializeConfigureBaker(txn, path);
 
     let response;
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
-      response = await this.sendToDevice(
-        INS.SIGN_CONFIGURE_BAKER,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
-      );
-    }
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadHeaderKindAndBitmap
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_FIRST_BATCH,
+      NONE,
+      payloadFirstBatch
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_AGGREGATION_KEY,
+      NONE,
+      payloadAggregationKeys
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_URL_LENGTH,
+      NONE,
+      payloadUrlLength
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_URL,
+      NONE,
+      payloadURL
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_COMMISSION_FEE,
+      NONE,
+      payloadCommissionFee
+    );
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
