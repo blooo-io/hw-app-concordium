@@ -19,6 +19,23 @@ import {
 } from "./serialization";
 import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
 
+export enum ExportType {
+  PRF_KEY_SEED = 1,
+  PRF_KEY = 2,
+}
+export enum Mode {
+  NO_DISPLAY = 0,
+  DISPLAY = 1,
+  EXPORT_CRED_ID = 2
+}
+
+interface IExportPrivateKeyData {
+  identity: number;
+  identityProvider: number;
+}
+
+const PRIVATE_KEY_LENGTH = 32;
+
 const LEDGER_CLA = 0xe0;
 
 // FOR GET VERSION AND APP NAME
@@ -81,6 +98,7 @@ const INS = {
   SIGN_TRANSFER: 0x02,
   SIGN_TRANSFER_SCHEDULE: 0x03,
   SIGN_CREDENTIAL_DEPLOYMENT: 0x04,
+  EXPORT_PRIVATE_KEY: 0x05,
   SIGN_TRANSFER_TO_PUBLIC: 0x12,
   SIGN_CONFIGURE_DELEGATION: 0x17,
   SIGN_CONFIGURE_BAKER: 0x18,
@@ -225,6 +243,45 @@ export default class Concordium {
 
     return {
       publicKey: publicKeyBuffer.subarray(1, 1 + publicKeyLength).toString("hex"),
+    };
+  }
+
+  /**
+   * Get Concordium address (public key) for a BIP32 path.
+   *
+   * @param exportType either export PRF_KEY_SEED or PRF_KEY
+   * @param mode either DISPLAY, NO_DISPLAY or EXPORT_CRED_ID
+   * @param isLegacy flag to indicate if the legacy mode is used
+   * @returns an object with the address field
+   *
+   */
+  async exportPrivateKey(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode, isLegacy: boolean): Promise<{ privateKey: string, credentialId?: string }> {
+    let payload = Buffer.alloc(0);
+    const isLegacyEncoded = isLegacy ? encodeInt8(0) : encodeInt8(1);
+    const identityEncoded = encodeInt32(data.identity);
+    payload = Buffer.concat([payload, isLegacyEncoded, identityEncoded]);
+
+    if (!isLegacy ) {
+      const identityProviderEncoded = encodeInt32(data.identityProvider);
+      payload = Buffer.concat([payload, identityProviderEncoded]);
+    }
+
+    const exportedPrivateKey = await this.sendToDevice(
+      INS.EXPORT_PRIVATE_KEY,
+      mode,
+      exportType,
+      payload
+    );
+
+    if (mode === Mode.EXPORT_CRED_ID) {
+      return {
+        privateKey: exportedPrivateKey.subarray(0, PRIVATE_KEY_LENGTH).toString("hex"),
+        credentialId: exportedPrivateKey.subarray(PRIVATE_KEY_LENGTH).toString("hex"),
+      };
+    }
+
+    return {
+      privateKey: exportedPrivateKey.toString("hex"),
     };
   }
 
