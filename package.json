@@ -1,31 +1,34 @@
 {
-  "name": "@ledgerhq/hw-app-algorand",
+  "name": "@blooo-io/hw-app-concordium",
   "type": "module",
-  "version": "6.29.4",
-  "description": "Ledger Hardware Wallet Algorand Application API",
+  "version": "1.0.0",
+  "description": "Ledger Hardware Wallet Concordium Application API",
   "keywords": [
     "Ledger",
     "LedgerWallet",
-    "algo",
-    "Algorand",
-    "NanoS",
+    "CCD",
+    "Concordium",
+    "NanoS+",
+    "NanoX",
+    "Flex",
+    "Stax",
     "Blue",
     "Hardware Wallet"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/LedgerHQ/ledger-live.git"
+    "url": "https://github.com/blooo-io/hw-app-concordium.git"
   },
   "bugs": {
-    "url": "https://github.com/LedgerHQ/ledger-live/issues"
+    "url": "https://github.com/blooo-io/hw-app-concordium/issues"
   },
-  "homepage": "https://github.com/LedgerHQ/ledger-live/tree/develop/libs/ledgerjs/packages/hw-app-algorand",
+  "homepage": "https://github.com/blooo-io/hw-app-concordium",
   "publishConfig": {
     "access": "public"
   },
-  "main": "lib/Algorand.js",
-  "module": "lib-es/Algorand.js",
-  "types": "lib/Algorand.d.ts",
+  "main": "lib/Concordium.js",
+  "module": "lib-es/Concordium.js",
+  "types": "lib/Concordium.d.ts",
   "license": "Apache-2.0",
   "dependencies": {
     "@concordium/common-sdk": "^9.5.3",
