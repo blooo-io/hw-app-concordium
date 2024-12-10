@@ -15,7 +15,8 @@ import {
   serializeUpdateContract,
   serializeTransactionPayloads,
   serializeUpdateCredentials,
-  serializeCredentialDeployment
+  serializeCredentialDeployment,
+  serializePublicInfoForIp
 } from "./serialization";
 import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
 
@@ -102,6 +103,7 @@ const INS = {
   SIGN_TRANSFER_TO_PUBLIC: 0x12,
   SIGN_CONFIGURE_DELEGATION: 0x17,
   SIGN_CONFIGURE_BAKER: 0x18,
+  SIGN_PUBLIC_INFO_FOR_IP: 0x20,
   GET_APP_NAME: 0x21,
   SIGN_UPDATE_CREDENTIALS: 0x31,
   SIGN_TRANSFER_MEMO: 0x32,
@@ -617,6 +619,42 @@ export default class Concordium {
         payloads[i]
       );
     }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
+    };
+  }
+
+  async signPublicInfoForIp(txn, path: string): Promise<{ signature: string[] }> {
+
+    const { payloadIdCredPubAndRegIdAndKeysLenght, payloadKeys, payloadThreshold } = serializePublicInfoForIp(txn, path);
+
+    let response;
+
+    response = await this.sendToDevice(
+      INS.SIGN_PUBLIC_INFO_FOR_IP,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadIdCredPubAndRegIdAndKeysLenght
+    );
+
+    for (let i = 0; i < payloadKeys.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_PUBLIC_INFO_FOR_IP,
+        P1_VERIFICATION_KEY,
+        NONE,
+        payloadKeys[i]
+      );
+    }
+
+    response = await this.sendToDevice(
+      INS.SIGN_PUBLIC_INFO_FOR_IP,
+      P1_SIGNATURE_THRESHOLD,
+      NONE,
+      payloadThreshold
+    );
 
     if (response.length === 1) throw new Error("User has declined.");
 

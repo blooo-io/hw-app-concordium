@@ -4,6 +4,7 @@ import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
 import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountAddress } from "@concordium/web-sdk";
 import { serializeCredentialDeploymentInfo } from "@concordium/common-sdk/lib/serialization";
+import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/common-sdk/lib/serializationHelpers";
 
 const MAX_CHUNK_SIZE = 255;
 const MAX_SCHEDULE_CHUNK_SIZE = 15;
@@ -454,4 +455,21 @@ export const serializeUpdateCredentials = (txn: any, path: string): { payloadHea
   const threshold = txSerialized.subarray(offset, offset + ONE_OCTET_LENGTH);
   offset += ONE_OCTET_LENGTH;
   return { payloadHeaderKindAndIndexLength, credentialIndex, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, attributesLength, tag, valueLength, value, proofLength, proofs, credentialIdCount, credentialIds, threshold };
+};
+
+export const serializePublicInfoForIp = (txn: any, path: string): { payloadIdCredPubAndRegIdAndKeysLenght: Buffer, payloadKeys: Buffer[], payloadThreshold: Buffer } => {
+
+  const serializedIdCredPub = Buffer.from(txn.idCredPub, 'hex');
+  const serializedRegId = Buffer.from(txn.regId, 'hex');
+  const serializedPublicKeys = serializeMap(txn.publicKeys.keys, encodeWord8, encodeWord8FromString, serializeVerifyKey);
+  const payloadThreshold = encodeInt8(txn.publicKeys.threshold);
+
+  const payloadIdCredPubAndRegIdAndKeysLenght = Buffer.concat([serializedIdCredPub, serializedRegId, serializedPublicKeys.subarray(0, 1)]);
+
+  let payloadKeys: Buffer[] = [];
+  for (let i = 0; i < Object.keys(txn.publicKeys.keys).length; i++) {
+    payloadKeys.push(Buffer.concat([serializedPublicKeys.subarray(i * (KEY_LENGTH + 2*ONE_OCTET_LENGTH) + 1, (i + 1) * (KEY_LENGTH + 2*ONE_OCTET_LENGTH) + 1)]));
+  }
+
+  return { payloadIdCredPubAndRegIdAndKeysLenght, payloadKeys, payloadThreshold };
 };
