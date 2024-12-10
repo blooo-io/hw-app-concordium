@@ -11,7 +11,10 @@ import {
   serializeRegisterData,
   serializeTransferToPublic,
   serializeDeployModule,
-  serializeInitContract
+  serializeInitContract,
+  serializeUpdateContract,
+  serializeTransactionPayloads,
+  serializeUpdateCredentials
 } from "./serialization";
 import BigNumber from "bignumber.js";
 import { encodeInt32 } from "./utils";
@@ -51,6 +54,25 @@ const P2_LAST = 0x00;
 const P1_INITIAL_PACKET = 0x00;
 const P1_SCHEDULED_TRANSFER_PAIRS = 0x01;
 
+// Update Credentials
+const P2_CREDENTIAL_INITIAL = 0x00;
+const P2_CREDENTIAL_CREDENTIAL_INDEX = 0x01;
+const P2_CREDENTIAL_CREDENTIAL = 0x02;
+const P2_CREDENTIAL_ID_COUNT = 0x03;
+const P2_CREDENTIAL_ID = 0x04;
+const P2_THRESHOLD = 0x05;
+
+//Deploy Credential
+const P1_VERIFICATION_KEY_LENGTH = 0x0A;
+const P1_VERIFICATION_KEY = 0x01;
+const P1_SIGNATURE_THRESHOLD = 0x02;
+const P1_AR_IDENTITY = 0x03;
+const P1_CREDENTIAL_DATES = 0x04;
+const P1_ATTRIBUTE_TAG = 0x05;
+const P1_ATTRIBUTE_VALUE = 0x06;
+const P1_LENGTH_OF_PROOFS = 0x07;
+const P1_PROOFS = 0x08;
+const P1_NEW_OR_EXISTING = 0x09
 
 const INS = {
   // GET_VERSION: 0x03,
@@ -62,11 +84,13 @@ const INS = {
   SIGN_CONFIGURE_DELEGATION: 0x17,
   SIGN_CONFIGURE_BAKER: 0x18,
   GET_APP_NAME: 0x21,
+  SIGN_UPDATE_CREDENTIALS: 0x31,
   SIGN_TRANSFER_MEMO: 0x32,
   SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x34,
   SIGN_REGISTER_DATA: 0x35,
   SIGN_DEPLOY_MODULE: 0x06,
   SIGN_INIT_CONTRACT: 0x06,
+  SIGN_UPDATE_CONTRACT: 0x06,
 };
 
 /**
@@ -474,7 +498,7 @@ export default class Concordium {
     };
   }
 
-  async signDeployModule(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signDeployModule(txn, path: string): Promise<{ signature: string[] }> {
 
     const { payloads } = serializeDeployModule(txn, path);
 
@@ -492,15 +516,12 @@ export default class Concordium {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
-  async signInitContract(txn, path: string): Promise<{ signature: string[]; transaction }> {
+  async signInitContract(txn, path: string): Promise<{ signature: string[] }> {
 
     const { payloads } = serializeInitContract(txn, path);
 
@@ -518,11 +539,141 @@ export default class Concordium {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
+    return {
+      signature: response.toString("hex"),
+    };
+  }
+
+  async signUpdateContract(txn, path: string): Promise<{ signature: string[] }> {
+
+    const { payloads } = serializeUpdateContract(txn, path);
+
+    let response;
+
+    for (let i = 0; i < payloads.length; i++) {
+      const lastChunk = i === payloads.length - 1;
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CONTRACT,
+        P1_FIRST_CHUNK + i,
+        lastChunk ? P2_LAST : P2_MORE,
+        payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
 
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
+    };
+  }
+
+  async signUpdateCredentials(txn, path: string): Promise<{ signature: string[] }> {
+
+    const { payloadHeaderKindAndIndexLength, credentialIndex, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, tag, valueLength, value, proofLength, proofs, credentialIdCount, credentialIds, threshold } = serializeUpdateCredentials(txn, path);
+
+    let response;
+    response = await this.sendToDevice(
+      INS.SIGN_UPDATE_CREDENTIALS,
+      NONE,
+      P2_CREDENTIAL_INITIAL,
+      payloadHeaderKindAndIndexLength[0]
+    );
+
+    for (let i = 0; i < txn.payload.newCredentials.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        NONE,
+        P2_CREDENTIAL_CREDENTIAL_INDEX,
+        credentialIndex[i]
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_VERIFICATION_KEY_LENGTH,
+        P2_CREDENTIAL_CREDENTIAL,
+        numberOfVerificationKeys[i]
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_VERIFICATION_KEY,
+        P2_CREDENTIAL_CREDENTIAL,
+        keyIndexAndSchemeAndVerificationKey[i]
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_SIGNATURE_THRESHOLD,
+        P2_CREDENTIAL_CREDENTIAL,
+        thresholdAndRegIdAndIPIdentity[i]
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_AR_IDENTITY,
+        P2_CREDENTIAL_CREDENTIAL,
+        encIdCredPubShareAndKey[i]
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_CREDENTIAL_DATES,
+        P2_CREDENTIAL_CREDENTIAL,
+        validToAndCreatedAtAndAttributesLength[i]
+      );
+      for (let j = 0; j < Object.keys(txn.payload.newCredentials[i].cdi.policy.revealedAttributes).length; j++) {
+        const tagAndValueLength = Buffer.concat([tag[i][j], valueLength[i][j]])
+        response = await this.sendToDevice(
+          INS.SIGN_UPDATE_CREDENTIALS,
+          P1_ATTRIBUTE_TAG,
+          P2_CREDENTIAL_CREDENTIAL,
+          tagAndValueLength
+        );
+        response = await this.sendToDevice(
+          INS.SIGN_UPDATE_CREDENTIALS,
+          P1_ATTRIBUTE_VALUE,
+          P2_CREDENTIAL_CREDENTIAL,
+          value[i][j]
+        );
+      }
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        P1_LENGTH_OF_PROOFS,
+        P2_CREDENTIAL_CREDENTIAL,
+        proofLength[i]
+      );
+
+      const proofPayload = serializeTransactionPayloads(proofs[i]);
+      for (let j = 0; j < proofPayload.length; j++) {
+        response = await this.sendToDevice(
+          INS.SIGN_UPDATE_CREDENTIALS,
+          P1_PROOFS,
+          P2_CREDENTIAL_CREDENTIAL,
+          proofPayload[j]
+        );
+      }
+    }
+
+    response = await this.sendToDevice(
+      INS.SIGN_UPDATE_CREDENTIALS,
+      NONE,
+      P2_CREDENTIAL_ID_COUNT,
+      credentialIdCount
+    );
+    for (let i = 0; i < txn.payload.removeCredentialIds.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_UPDATE_CREDENTIALS,
+        NONE,
+        P2_CREDENTIAL_ID,
+        credentialIds[i]
+      );
+    }
+    response = await this.sendToDevice(
+      INS.SIGN_UPDATE_CREDENTIALS,
+      NONE,
+      P2_THRESHOLD,
+      threshold
+    );
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
     };
   }
 
