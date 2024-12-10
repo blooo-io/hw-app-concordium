@@ -119,7 +119,7 @@ const INS = {
  * @param scrambleKey a scramble key
  *
  * @example
- * import Concordium from "@ledgerhq/hw-app-concordium";
+ * import Concordium from "@blooo-io/hw-app-concordium";
  * const Concordium = new Concordium(transport);
  */
 export default class Concordium {
