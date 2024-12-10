@@ -3,6 +3,7 @@ import { encodeDataBlob, encodeInt8, encodeWord16, encodeWord64, serializeAccoun
 import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
 import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountAddress } from "@concordium/web-sdk";
+import { serializeCredentialDeploymentInfo } from "@concordium/common-sdk/lib/serialization";
 
 const MAX_CHUNK_SIZE = 255;
 const MAX_SCHEDULE_CHUNK_SIZE = 15;
@@ -344,6 +345,53 @@ export const serializeUpdateContract = (txn: any, path: string): { payloads: Buf
   return serializeTransaction(txn, path);
 };
 
+export const serializeCredentialDeployment = (txn: any, path: string): { payloadDerivationPath: Buffer, numberOfVerificationKeys: Buffer, keyIndexAndSchemeAndVerificationKey: Buffer, thresholdAndRegIdAndIPIdentity: Buffer, encIdCredPubShareAndKey: Buffer, validToAndCreatedAtAndAttributesLength: Buffer, attributesLength: Buffer, tag: Buffer[], valueLength: Buffer[], value: Buffer[], proofLength: Buffer, proofs: Buffer } => {
+  let offset = 0;
+  const txSerialized = serializeCredentialDeploymentInfo(txn);
+  const payloadDerivationPath = pathToBuffer(path);
+  let numberOfVerificationKeys: Buffer = Buffer.alloc(0);
+  let keyIndexAndSchemeAndVerificationKey: Buffer = Buffer.alloc(0);
+  let thresholdAndRegIdAndIPIdentity: Buffer = Buffer.alloc(0);
+  let encIdCredPubShareAndKey: Buffer = Buffer.alloc(0);
+  let validToAndCreatedAtAndAttributesLength: Buffer = Buffer.alloc(0);
+  let attributesLength: Buffer = Buffer.alloc(0);
+  let tag: Buffer[] = [];
+  let valueLength: Buffer[] = [];
+  let value: Buffer[] = [];
+  let proofLength: Buffer = Buffer.alloc(0);
+  let proofs: Buffer = Buffer.alloc(0);
+
+  numberOfVerificationKeys = Buffer.from(txSerialized.subarray(offset, offset + INDEX_LENGTH));
+  offset += INDEX_LENGTH;
+  keyIndexAndSchemeAndVerificationKey = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + KEY_LENGTH));
+  offset += 2 * ONE_OCTET_LENGTH + KEY_LENGTH;
+  thresholdAndRegIdAndIPIdentity = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + REG_ID_LENGTH + IP_IDENTITY_LENGTH + AR_DATA_LENGTH));
+  offset += 2 * ONE_OCTET_LENGTH + REG_ID_LENGTH + IP_IDENTITY_LENGTH + AR_DATA_LENGTH;
+  encIdCredPubShareAndKey = Buffer.from(txSerialized.subarray(offset, offset + 4 * ONE_OCTET_LENGTH + ID_CRED_PUB_SHARE_LENGTH));
+  offset += 4 * ONE_OCTET_LENGTH + ID_CRED_PUB_SHARE_LENGTH;
+  validToAndCreatedAtAndAttributesLength = Buffer.from(txSerialized.subarray(offset, offset + ATTRIBUTES_LENGTH + VALID_TO_LENGTH + CREATED_AT_LENGTH));
+  offset += ATTRIBUTES_LENGTH + VALID_TO_LENGTH + CREATED_AT_LENGTH;
+  attributesLength = validToAndCreatedAtAndAttributesLength.subarray(-ATTRIBUTES_LENGTH);
+  tag = [];
+  valueLength = [];
+  value = [];
+  for (let j = 0; j < attributesLength.readUInt16BE(0); j++) {
+    tag.push(Buffer.from(txSerialized.subarray(offset, offset + TAG_LENGTH)));
+    offset += TAG_LENGTH;
+    valueLength.push(Buffer.from(txSerialized.subarray(offset, offset + VALUE_LENGTH)));
+    offset += VALUE_LENGTH;
+    value.push(Buffer.from(txSerialized.subarray(offset, offset + valueLength[j].readUInt8(0))));
+    offset += valueLength[j].readUInt8(0);
+  }
+
+  proofLength = Buffer.from(txSerialized.subarray(offset, offset + PROOF_LENGTH_LENGTH));
+  offset += PROOF_LENGTH_LENGTH;
+  proofs = Buffer.from(txSerialized.subarray(offset, offset + proofLength.readUInt32BE(0)));
+  offset += proofLength.readUInt32BE(0);
+
+  return { payloadDerivationPath, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, attributesLength, tag, valueLength, value, proofLength, proofs };
+};
+
 export const serializeUpdateCredentials = (txn: any, path: string): { payloadHeaderKindAndIndexLength: Buffer[], credentialIndex: Buffer[], numberOfVerificationKeys: Buffer[], keyIndexAndSchemeAndVerificationKey: Buffer[], thresholdAndRegIdAndIPIdentity: Buffer[], encIdCredPubShareAndKey: Buffer[], validToAndCreatedAtAndAttributesLength: Buffer[], attributesLength: Buffer[], tag: Buffer[][], valueLength: Buffer[][], value: Buffer[][], proofLength: Buffer[], proofs: Buffer[], credentialIdCount: Buffer, credentialIds: Buffer[], threshold: Buffer } => {
   let offset = 0;
   const txSerialized = serializeAccountTransaction(txn);
@@ -358,7 +406,7 @@ export const serializeUpdateCredentials = (txn: any, path: string): { payloadHea
   let encIdCredPubShareAndKey: Buffer[] = [];
   let validToAndCreatedAtAndAttributesLength: Buffer[] = [];
   let attributesLength: Buffer[] = [];
-  let tag: Buffer[][]  = [[]];
+  let tag: Buffer[][] = [[]];
   let valueLength: Buffer[][] = [[]];
   let value: Buffer[][] = [[]];
   let proofLength: Buffer[] = [];

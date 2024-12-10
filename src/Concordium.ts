@@ -14,10 +14,10 @@ import {
   serializeInitContract,
   serializeUpdateContract,
   serializeTransactionPayloads,
-  serializeUpdateCredentials
+  serializeUpdateCredentials,
+  serializeCredentialDeployment
 } from "./serialization";
-import BigNumber from "bignumber.js";
-import { encodeInt32 } from "./utils";
+import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
 
 const LEDGER_CLA = 0xe0;
 
@@ -80,6 +80,7 @@ const INS = {
   GET_PUBLIC_KEY: 0x01,
   SIGN_TRANSFER: 0x02,
   SIGN_TRANSFER_SCHEDULE: 0x03,
+  SIGN_CREDENTIAL_DEPLOYMENT: 0x04,
   SIGN_TRANSFER_TO_PUBLIC: 0x12,
   SIGN_CONFIGURE_DELEGATION: 0x17,
   SIGN_CONFIGURE_BAKER: 0x18,
@@ -557,6 +558,109 @@ export default class Concordium {
         P1_FIRST_CHUNK + i,
         lastChunk ? P2_LAST : P2_MORE,
         payloads[i]
+      );
+    }
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
+    };
+  }
+
+  async signCredentialDeployment(txn, isNew: boolean, addressOrExpiry: string | BigInt, path: string): Promise<{ signature: string[] }> {
+
+    const { payloadDerivationPath, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, tag, valueLength, value, proofLength, proofs } = serializeCredentialDeployment(txn, path);
+
+    let response;
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadDerivationPath
+    );
+
+
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_VERIFICATION_KEY_LENGTH,
+      NONE,
+      numberOfVerificationKeys
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_VERIFICATION_KEY,
+      NONE,
+      keyIndexAndSchemeAndVerificationKey
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_SIGNATURE_THRESHOLD,
+      NONE,
+      thresholdAndRegIdAndIPIdentity
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_AR_IDENTITY,
+      NONE,
+      encIdCredPubShareAndKey
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_CREDENTIAL_DATES,
+      NONE,
+      validToAndCreatedAtAndAttributesLength
+    );
+    for (let i = 0; i < Object.keys(txn.policy.revealedAttributes).length; i++) {
+      const tagAndValueLength = Buffer.concat([tag[i], valueLength[i]])
+      response = await this.sendToDevice(
+        INS.SIGN_CREDENTIAL_DEPLOYMENT,
+        P1_ATTRIBUTE_TAG,
+        NONE,
+        tagAndValueLength
+      );
+      response = await this.sendToDevice(
+        INS.SIGN_CREDENTIAL_DEPLOYMENT,
+        P1_ATTRIBUTE_VALUE,
+        NONE,
+        value[i]
+      );
+    }
+    response = await this.sendToDevice(
+      INS.SIGN_CREDENTIAL_DEPLOYMENT,
+      P1_LENGTH_OF_PROOFS,
+      NONE,
+      proofLength
+    );
+
+    const proofPayload = serializeTransactionPayloads(proofs);
+    for (let i = 0; i < proofPayload.length; i++) {
+      response = await this.sendToDevice(
+        INS.SIGN_CREDENTIAL_DEPLOYMENT,
+        P1_PROOFS,
+        NONE,
+        proofPayload[i]
+      );
+    }
+
+    if (isNew) {
+      const isNew = encodeInt8(0);
+      const serializeExpiry = encodeWord64(addressOrExpiry as BigInt);
+      const expiry = Buffer.concat([isNew, serializeExpiry])
+      response = await this.sendToDevice(
+        INS.SIGN_CREDENTIAL_DEPLOYMENT,
+        P1_NEW_OR_EXISTING,
+        NONE,
+        expiry
+      );
+    } else {
+      const isNew = encodeInt8(1);
+      const address = Buffer.concat([isNew, Buffer.from(addressOrExpiry as string, "hex")])
+      response = await this.sendToDevice(
+        INS.SIGN_CREDENTIAL_DEPLOYMENT,
+        P1_NEW_OR_EXISTING,
+        NONE,
+        address
       );
     }
 
