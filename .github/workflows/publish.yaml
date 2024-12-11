@@ -29,10 +29,8 @@ jobs:
           node-version: '22'
           registry-url: "https://registry.npmjs.org/"
           scope: "@blooo"
-      - name: Install yarn
-        run: npm install -g yarn
-      - run: yarn install
-      - run: yarn build
+      - run: npm install
+      - run: npm run build
       - name: Get latest release version number
         id: get_version
         uses: battila7/get-version-action@v2
