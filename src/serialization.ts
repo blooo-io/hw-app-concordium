@@ -33,6 +33,10 @@ const TRANSACTION_FEE_COMMISSION_LENGTH = 4;
 const BAKING_REWARD_COMMISSION_LENGTH = 4;
 const FINALIZATION_REWARD_COMMISSION_LENGTH = 4;
 
+// Deploy module constants
+const VERSION_LENGTH = 4;
+const SOURCE_LENGTH_LENGTH = 4;
+
 // Credential and identity-related constants
 const REG_ID_LENGTH = 48;
 const IP_IDENTITY_LENGTH = 4;
@@ -422,8 +426,13 @@ export const serializeTransferToPublic = (txn: ITransferToPublicTransaction, pat
  * @param {string} path - The BIP32 path as a string.
  * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
  */
-export const serializeDeployModule = (txn: IDeployModuleTransaction, path: string): { payloads: Buffer[] } => {
-  return serializeTransaction(txn, path);
+export const serializeDeployModule = (txn: IDeployModuleTransaction, path: string): { payloadsHeaderAndVersion: Buffer[], payloadSource: Buffer } => {
+  const txSerialized = serializeAccountTransaction(txn);
+  const headerAndVersion = txSerialized.subarray(0, HEADER_LENGTH + TRANSACTION_KIND_LENGTH + VERSION_LENGTH + SOURCE_LENGTH_LENGTH);
+  const payloadSource = txSerialized.subarray(HEADER_LENGTH + TRANSACTION_KIND_LENGTH + VERSION_LENGTH + SOURCE_LENGTH_LENGTH);
+
+  const payloadsHeaderAndVersion = serializeTransactionPayloadsWithDerivationPath(path, headerAndVersion);
+  return {payloadsHeaderAndVersion, payloadSource};
 };
 
 /**

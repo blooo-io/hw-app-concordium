@@ -57,6 +57,9 @@ const P2_LAST = 0x00;
 const P1_INITIAL_PACKET = 0x00;
 const P1_SCHEDULED_TRANSFER_PAIRS = 0x01;
 
+// Deploy Module
+const P1_SOURCE = 0x01;
+
 // Update Credentials
 const P2_CREDENTIAL_INITIAL = 0x00;
 const P2_CREDENTIAL_CREDENTIAL_INDEX = 0x01;
@@ -578,19 +581,22 @@ export default class Concordium {
    */
   async signDeployModule(txn: IDeployModuleTransaction, path: string): Promise<{ signature: string[] }> {
 
-    const { payloads } = serializeDeployModule(txn, path);
+    const { payloadsHeaderAndVersion, payloadSource } = serializeDeployModule(txn, path);
 
     let response;
+    await this.sendToDevice(
+      INS.SIGN_DEPLOY_MODULE,
+      P1_INITIAL_PACKET,
+      P2_LAST,
+      payloadsHeaderAndVersion[0]
+    );
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
-      response = await this.sendToDevice(
-        INS.SIGN_DEPLOY_MODULE,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
-      );
-    }
+    response = await this.sendToDevice(
+      INS.SIGN_DEPLOY_MODULE,
+      P1_SOURCE,
+      P2_LAST,
+      payloadSource
+    );
 
     if (response.length === 1) throw new Error("User has declined.");
 
