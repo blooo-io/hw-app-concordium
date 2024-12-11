@@ -19,27 +19,12 @@ import {
   serializePublicInfoForIp
 } from "./serialization";
 import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
+import { Mode, ExportType, IExportPrivateKeyData, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleTransaction, ISimpleTransferWithScheduleAndMemoTransaction, IConfigureDelegationTransaction, IRegisterDataTransaction, ITransferToPublicTransaction, IDeployModuleTransaction, IInitContractTransaction, IUpdateContractTransaction, IPublicInfoForIpTransaction, ICredentialDeploymentTransaction, IUpdateCredentialsTransaction, IConfigureBakerTransaction } from "./type";
 
-export enum ExportType {
-  PRF_KEY_SEED = 1,
-  PRF_KEY = 2,
-}
-export enum Mode {
-  NO_DISPLAY = 0,
-  DISPLAY = 1,
-  EXPORT_CRED_ID = 2
-}
-
-interface IExportPrivateKeyData {
-  identity: number;
-  identityProvider: number;
-}
 
 const PRIVATE_KEY_LENGTH = 32;
 
 const LEDGER_CLA = 0xe0;
-
-// FOR GET VERSION AND APP NAME
 const NONE = 0x00;
 
 // FOR VERIFY ADRESS
@@ -93,7 +78,6 @@ const P1_PROOFS = 0x08;
 const P1_NEW_OR_EXISTING = 0x09
 
 const INS = {
-  // GET_VERSION: 0x03,
   VERIFY_ADDRESS: 0x00,
   GET_PUBLIC_KEY: 0x01,
   SIGN_TRANSFER: 0x02,
@@ -135,77 +119,57 @@ export default class Concordium {
     this.transport.decorateAppAPIMethods(
       this,
       [
-        "getVersion",
         "getAddress",
         "verifyAddress",
-        "signTransaction",
+        "verifyAddressLegacy",
+        "getPublicKey",
+        "exportPrivateKey",
+        "signTransfer",
+        "signTransferWithMemo",
+        "signTransferWithSchedule",
+        "signTransferWithScheduleAndMemo",
+        "signConfigureDelegation",
+        "signConfigureBaker",
+        "signRegisterData",
+        "signTransferToPublic",
+        "signDeployModule",
+        "signInitContract",
+        "signUpdateContract",
+        "signPublicInfoForIp",
+        "signUpdateCredentials",
+        "signCredentialDeployment",
       ],
       scrambleKey
     );
   }
 
-  // /**
-  //  * Get application version.
-  //  *
-  //  * @returns version object
-  //  *
-  //  * @example
-  //  * concordium.getVersion().then(r => r.version)
-  //  */
-  // async getVersion(): Promise<{ version: string }> {
-  //   const [major, minor, patch] = await this.sendToDevice(
-  //     INS.GET_VERSION,
-  //     NONE,
-  //     NONE,
-  //     Buffer.from([])
-  //   );
-  //   return {
-  //     version: `${major}.${minor}.${patch}`,
-  //   };
-  // }
-
-  /**
-   * Legacy Verify address.
-   *
-   * @returns status
-   *
-   * @example
-   * concordium.verifyAddressLegacy().then(r => r.status)
-   */
-  async verifyAddressLegacy(id: number, cred: number): Promise<{ status: string }> {
-    try {
-      const idEncoded = encodeInt32(id);
-      const credEncoded = encodeInt32(cred);
-      await this.sendToDevice(
-        INS.VERIFY_ADDRESS,
-        P1_LEGACY_VERIFY_ADDRESS,
-        NONE,
-        Buffer.concat([idEncoded, credEncoded])
-      );
-      return { status: "success" };
-    } catch (error) {
-      return { status: "failed" };
-    }
-  }
-
   /**
    * Verify address.
    *
-   * @returns status
+   * @param isLegacy - Flag to indicate if the legacy mode is used.
+   * @param id - The identity number.
+   * @param cred - The credential number.
+   * @param idp - Mandatory if isLegacy is false. The identity provider number.
+   * @returns A promise that resolves to an object containing the status.
    *
    * @example
-   * concordium.verifyAddress().then(r => r.status)
+   * concordium.verifyAddress(12,12,12).then(r => r.status)
    */
-  async verifyAddress(idp: number, id: number, cred: number): Promise<{ status: string }> {
+  async verifyAddress(isLegacy: boolean, id: number, cred: number, idp?: number): Promise<{ status: string }> {
     try {
       const idEncoded = encodeInt32(id);
-      const idpEncoded = encodeInt32(idp);
+      let payload = Buffer.from(idEncoded);
+      if (!isLegacy) {
+        const idpEncoded = encodeInt32(idp);
+        payload = Buffer.concat([payload, idpEncoded]);
+      }
       const credEncoded = encodeInt32(cred);
+      payload = Buffer.concat([payload, credEncoded]);
       await this.sendToDevice(
         INS.VERIFY_ADDRESS,
-        P1_VERIFY_ADDRESS,
+        isLegacy ? P1_LEGACY_VERIFY_ADDRESS : P1_VERIFY_ADDRESS,
         NONE,
-        Buffer.concat([idpEncoded, idEncoded, credEncoded])
+        payload
       );
       return { status: "success" };
     } catch (error) {
@@ -216,10 +180,10 @@ export default class Concordium {
   /**
    * Get Concordium address (public key) for a BIP32 path.
    *
-   * @param path a BIP32 path
-   * @param display flag to show display
-   * @param signedKey flag to sign key
-   * @returns an object with the address field
+   * @param path - A BIP32 path.
+   * @param display - Flag to show display.
+   * @param signedKey - Flag to sign key.
+   * @returns A promise that resolves to an object with the public key and optionally the signed public key.
    *
    * @example
    * concordium.getPublicKey("1105'/0'/0'/0/0/0/0/", true, false)
@@ -234,7 +198,7 @@ export default class Concordium {
       pathBuffer
     );
 
-    const publicKeyLength = publicKeyBuffer[0];
+    const publicKeyLength: number = publicKeyBuffer[0];
 
     if (signedKey) {
       return {
@@ -249,13 +213,13 @@ export default class Concordium {
   }
 
   /**
-   * Get Concordium address (public key) for a BIP32 path.
+   * Export a private key.
    *
-   * @param exportType either export PRF_KEY_SEED or PRF_KEY
-   * @param mode either DISPLAY, NO_DISPLAY or EXPORT_CRED_ID
-   * @param isLegacy flag to indicate if the legacy mode is used
-   * @returns an object with the address field
-   *
+   * @param data - The data required for exporting the private key.
+   * @param exportType - The type of export, either PRF_KEY_SEED or PRF_KEY.
+   * @param mode - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+   * @param isLegacy - Flag to indicate if the legacy mode is used.
+   * @returns A promise that resolves to an object with the private key and optionally the credential ID.
    */
   async exportPrivateKey(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode, isLegacy: boolean): Promise<{ privateKey: string, credentialId?: string }> {
     let payload = Buffer.alloc(0);
@@ -263,7 +227,7 @@ export default class Concordium {
     const identityEncoded = encodeInt32(data.identity);
     payload = Buffer.concat([payload, isLegacyEncoded, identityEncoded]);
 
-    if (!isLegacy ) {
+    if (!isLegacy) {
       const identityProviderEncoded = encodeInt32(data.identityProvider);
       payload = Buffer.concat([payload, identityProviderEncoded]);
     }
@@ -289,14 +253,16 @@ export default class Concordium {
 
   /**
    * Signs a Concordium transaction using the specified account index.
+   *
    * @param txn - The transaction to sign.
    * @param path - The derivation path to use for signing.
-   * @returns An object containing the signature and the signed transaction.
+   * @returns A promise that resolves to an object containing the signature.
    * @throws Error if the user declines the transaction.
+   *
    * @example
    * concordium.signTransfer(txn).then(r => r.signature)
    */
-  async signTransfer(txn, path: string): Promise<{ signature: string, transaction: string }> {
+  async signTransfer(txn: ISimpleTransferTransaction, path: string): Promise<{ signature: string }> {
 
     const { payloads } = serializeSimpleTransfer(txn, path);
 
@@ -314,27 +280,31 @@ export default class Concordium {
 
     if (response.length === 1) throw new Error("User has declined.");
 
-    const transaction = payloads.slice(1);
-
     return {
       signature: response.toString("hex"),
-      transaction: Buffer.concat(transaction).toString("hex"),
     };
   }
 
-  async signTransferWithMemo(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a simple transfer with a memo.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signTransferWithMemo(txn: ISimpleTransferWithMemoTransaction, path: string): Promise<{ signature: string[] }> {
 
 
     const { payloadHeaderAddressMemoLength, payloadsMemo, payloadsAmount } = serializeSimpleTransferWithMemo(txn, path);
 
     let response;
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_MEMO,
       P1_INITIAL_WITH_MEMO,
       NONE,
       payloadHeaderAddressMemoLength[0]
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_MEMO,
       P1_MEMO,
       NONE,
@@ -354,27 +324,33 @@ export default class Concordium {
     };
   }
 
-  async signTransferWithSchedule(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a transfer with a schedule.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signTransferWithSchedule(txn: ISimpleTransferWithScheduleTransaction, path: string): Promise<{ signature: string[] }> {
 
 
     const { payloadHeaderAddressScheduleLength, payloadsSchedule } = serializeTransferWithSchedule(txn, path);
 
     let response;
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_SCHEDULE,
       P1_INITIAL_PACKET,
       NONE,
       payloadHeaderAddressScheduleLength[0]
     );
 
-    for (let i = 0; i < payloadsSchedule.length; i++) {
-      const lastChunk = i === payloadsSchedule.length - 1;
+    for (const schedule of payloadsSchedule) {
       response = await this.sendToDevice(
         INS.SIGN_TRANSFER_SCHEDULE,
         P1_SCHEDULED_TRANSFER_PAIRS,
         NONE,
-        payloadsSchedule[i]
+        schedule
       );
     }
 
@@ -385,31 +361,38 @@ export default class Concordium {
     };
   }
 
-  async signTransferWithScheduleAndMemo(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a transfer with a schedule and a memo.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signTransferWithScheduleAndMemo(txn: ISimpleTransferWithScheduleAndMemoTransaction, path: string): Promise<{ signature: string[] }> {
 
 
     const { payloadHeaderAddressScheduleLengthAndMemoLength, payloadMemo, payloadsSchedule } = serializeTransferWithScheduleAndMemo(txn, path);
 
     let response;
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
       P1_INITIAL_WITH_MEMO_SCHEDULE,
       NONE,
       payloadHeaderAddressScheduleLengthAndMemoLength[0]
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
       P1_MEMO_SCHEDULE,
       NONE,
       payloadMemo[0]
     );
 
-    for (let i = 0; i < payloadsSchedule.length; i++) {
+    for (const schedule of payloadsSchedule) {
       response = await this.sendToDevice(
         INS.SIGN_TRANSFER_SCHEDULE_AND_MEMO,
         P1_SCHEDULED_TRANSFER_PAIRS,
         NONE,
-        payloadsSchedule[i]
+        schedule
       );
     }
 
@@ -420,7 +403,14 @@ export default class Concordium {
     };
   }
 
-  async signConfigureDelegation(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a configure delegation transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signConfigureDelegation(txn: IConfigureDelegationTransaction, path: string): Promise<{ signature: string[] }> {
 
 
     const { payloads } = serializeConfigureDelegation(txn, path);
@@ -444,37 +434,44 @@ export default class Concordium {
     };
   }
 
-  async signConfigureBaker(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a configure baker transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signConfigureBaker(txn: IConfigureBakerTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloadHeaderKindAndBitmap, payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee } = serializeConfigureBaker(txn, path);
 
     let response;
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_INITIAL_PACKET,
       NONE,
       payloadHeaderKindAndBitmap
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_FIRST_BATCH,
       NONE,
       payloadFirstBatch
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_AGGREGATION_KEY,
       NONE,
       payloadAggregationKeys
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_URL_LENGTH,
       NONE,
       payloadUrlLength
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_URL,
       NONE,
@@ -494,24 +491,31 @@ export default class Concordium {
     };
   }
 
-  async signRegisterData(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a register data transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signRegisterData(txn: IRegisterDataTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloadHeader, payloadsData } = serializeRegisterData(txn, path);
 
     let response;
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_REGISTER_DATA,
       P1_INITIAL_PACKET,
       NONE,
       payloadHeader[0]
     );
 
-    for (let i = 0; i < payloadsData.length; i++) {
+    for (const data of payloadsData) {
       response = await this.sendToDevice(
         INS.SIGN_REGISTER_DATA,
         P1_DATA,
         NONE,
-        payloadsData[i]
+        data
       );
     }
 
@@ -522,32 +526,39 @@ export default class Concordium {
     };
   }
 
-  async signTransferToPublic(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a transfer to public transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signTransferToPublic(txn: ITransferToPublicTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloadHeader, payloadsAmountAndProofsLength, payloadsProofs } = serializeTransferToPublic(txn, path);
 
     let response;
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_TO_PUBLIC,
       P1_INITIAL_PACKET,
       NONE,
       payloadHeader[0]
     );
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_TRANSFER_TO_PUBLIC,
       P1_REMAINING_AMOUNT,
       NONE,
       payloadsAmountAndProofsLength[0]
     );
 
-    for (let i = 0; i < payloadsProofs.length; i++) {
+    for (const proof of payloadsProofs) {
       response = await this.sendToDevice(
         INS.SIGN_TRANSFER_TO_PUBLIC,
         P1_PROOF,
         NONE,
-        payloadsProofs[i]
+        proof
       );
     }
 
@@ -558,7 +569,14 @@ export default class Concordium {
     };
   }
 
-  async signDeployModule(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a deploy module transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signDeployModule(txn: IDeployModuleTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloads } = serializeDeployModule(txn, path);
 
@@ -581,7 +599,14 @@ export default class Concordium {
     };
   }
 
-  async signInitContract(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs an init contract transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signInitContract(txn: IInitContractTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloads } = serializeInitContract(txn, path);
 
@@ -604,7 +629,14 @@ export default class Concordium {
     };
   }
 
-  async signUpdateContract(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs an update contract transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signUpdateContract(txn: IUpdateContractTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloads } = serializeUpdateContract(txn, path);
 
@@ -627,25 +659,32 @@ export default class Concordium {
     };
   }
 
-  async signPublicInfoForIp(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs public info for IP transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signPublicInfoForIp(txn: IPublicInfoForIpTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloadIdCredPubAndRegIdAndKeysLenght, payloadKeys, payloadThreshold } = serializePublicInfoForIp(txn, path);
 
     let response;
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_PUBLIC_INFO_FOR_IP,
       P1_INITIAL_PACKET,
       NONE,
       payloadIdCredPubAndRegIdAndKeysLenght
     );
 
-    for (let i = 0; i < payloadKeys.length; i++) {
-      response = await this.sendToDevice(
+    for (const key of payloadKeys) {
+      await this.sendToDevice(
         INS.SIGN_PUBLIC_INFO_FOR_IP,
         P1_VERIFICATION_KEY,
         NONE,
-        payloadKeys[i]
+        key
       );
     }
 
@@ -663,12 +702,21 @@ export default class Concordium {
     };
   }
 
-  async signCredentialDeployment(txn, isNew: boolean, addressOrExpiry: string | BigInt, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs a credential deployment transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param isNew - Flag indicating if it's a new credential.
+   * @param addressOrExpiry - The address or expiry date.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signCredentialDeployment(txn: ICredentialDeploymentTransaction, isNew: boolean, addressOrExpiry: string | BigInt, path: string): Promise<{ signature: string[] }> {
 
     const { payloadDerivationPath, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, tag, valueLength, value, proofLength, proofs } = serializeCredentialDeployment(txn, path);
 
     let response;
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_INITIAL_PACKET,
       NONE,
@@ -676,31 +724,31 @@ export default class Concordium {
     );
 
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_VERIFICATION_KEY_LENGTH,
       NONE,
       numberOfVerificationKeys
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_VERIFICATION_KEY,
       NONE,
       keyIndexAndSchemeAndVerificationKey
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_SIGNATURE_THRESHOLD,
       NONE,
       thresholdAndRegIdAndIPIdentity
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_AR_IDENTITY,
       NONE,
       encIdCredPubShareAndKey
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_CREDENTIAL_DATES,
       NONE,
@@ -708,20 +756,20 @@ export default class Concordium {
     );
     for (let i = 0; i < Object.keys(txn.policy.revealedAttributes).length; i++) {
       const tagAndValueLength = Buffer.concat([tag[i], valueLength[i]])
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_CREDENTIAL_DEPLOYMENT,
         P1_ATTRIBUTE_TAG,
         NONE,
         tagAndValueLength
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_CREDENTIAL_DEPLOYMENT,
         P1_ATTRIBUTE_VALUE,
         NONE,
         value[i]
       );
     }
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CREDENTIAL_DEPLOYMENT,
       P1_LENGTH_OF_PROOFS,
       NONE,
@@ -729,12 +777,12 @@ export default class Concordium {
     );
 
     const proofPayload = serializeTransactionPayloads(proofs);
-    for (let i = 0; i < proofPayload.length; i++) {
-      response = await this.sendToDevice(
+    for (const proof of proofPayload) {
+      await this.sendToDevice(
         INS.SIGN_CREDENTIAL_DEPLOYMENT,
         P1_PROOFS,
         NONE,
-        proofPayload[i]
+        proof
       );
     }
 
@@ -766,12 +814,19 @@ export default class Concordium {
     };
   }
 
-  async signUpdateCredentials(txn, path: string): Promise<{ signature: string[] }> {
+  /**
+   * Signs an update credentials transaction.
+   *
+   * @param txn - The transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signUpdateCredentials(txn: IUpdateCredentialsTransaction, path: string): Promise<{ signature: string[] }> {
 
     const { payloadHeaderKindAndIndexLength, credentialIndex, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, tag, valueLength, value, proofLength, proofs, credentialIdCount, credentialIds, threshold } = serializeUpdateCredentials(txn, path);
 
     let response;
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_UPDATE_CREDENTIALS,
       NONE,
       P2_CREDENTIAL_INITIAL,
@@ -779,37 +834,37 @@ export default class Concordium {
     );
 
     for (let i = 0; i < txn.payload.newCredentials.length; i++) {
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         NONE,
         P2_CREDENTIAL_CREDENTIAL_INDEX,
         credentialIndex[i]
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_VERIFICATION_KEY_LENGTH,
         P2_CREDENTIAL_CREDENTIAL,
         numberOfVerificationKeys[i]
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_VERIFICATION_KEY,
         P2_CREDENTIAL_CREDENTIAL,
         keyIndexAndSchemeAndVerificationKey[i]
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_SIGNATURE_THRESHOLD,
         P2_CREDENTIAL_CREDENTIAL,
         thresholdAndRegIdAndIPIdentity[i]
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_AR_IDENTITY,
         P2_CREDENTIAL_CREDENTIAL,
         encIdCredPubShareAndKey[i]
       );
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_CREDENTIAL_DATES,
         P2_CREDENTIAL_CREDENTIAL,
@@ -817,20 +872,20 @@ export default class Concordium {
       );
       for (let j = 0; j < Object.keys(txn.payload.newCredentials[i].cdi.policy.revealedAttributes).length; j++) {
         const tagAndValueLength = Buffer.concat([tag[i][j], valueLength[i][j]])
-        response = await this.sendToDevice(
+        await this.sendToDevice(
           INS.SIGN_UPDATE_CREDENTIALS,
           P1_ATTRIBUTE_TAG,
           P2_CREDENTIAL_CREDENTIAL,
           tagAndValueLength
         );
-        response = await this.sendToDevice(
+        await this.sendToDevice(
           INS.SIGN_UPDATE_CREDENTIALS,
           P1_ATTRIBUTE_VALUE,
           P2_CREDENTIAL_CREDENTIAL,
           value[i][j]
         );
       }
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         P1_LENGTH_OF_PROOFS,
         P2_CREDENTIAL_CREDENTIAL,
@@ -838,24 +893,24 @@ export default class Concordium {
       );
 
       const proofPayload = serializeTransactionPayloads(proofs[i]);
-      for (let j = 0; j < proofPayload.length; j++) {
-        response = await this.sendToDevice(
+      for (const proof of proofPayload) {
+        await this.sendToDevice(
           INS.SIGN_UPDATE_CREDENTIALS,
           P1_PROOFS,
           P2_CREDENTIAL_CREDENTIAL,
-          proofPayload[j]
+          proof
         );
       }
     }
 
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_UPDATE_CREDENTIALS,
       NONE,
       P2_CREDENTIAL_ID_COUNT,
       credentialIdCount
     );
     for (let i = 0; i < txn.payload.removeCredentialIds.length; i++) {
-      response = await this.sendToDevice(
+      await this.sendToDevice(
         INS.SIGN_UPDATE_CREDENTIALS,
         NONE,
         P2_CREDENTIAL_ID,
@@ -876,6 +931,15 @@ export default class Concordium {
     };
   }
 
+  /**
+   * Sends a command to the device.
+   *
+   * @param instruction - The instruction code.
+   * @param p1 - The first parameter.
+   * @param p2 - The second parameter.
+   * @param payload - The payload to send.
+   * @returns A promise that resolves to the device's response.
+   */
   private async sendToDevice(
     instruction: number,
     p1: number,
@@ -897,6 +961,11 @@ export default class Concordium {
     return reply.subarray(0, reply.length - 2);
   }
 
+  /**
+   * Throws an error if the device response indicates a failure.
+   *
+   * @param reply - The device's response.
+   */
   private throwOnFailure(reply: Buffer) {
     // transport makes sure reply has a valid length
     const status = reply.readUInt16BE(reply.length - 2);

@@ -5,7 +5,9 @@ import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountAddress } from "@concordium/web-sdk";
 import { serializeCredentialDeploymentInfo } from "@concordium/common-sdk/lib/serialization";
 import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/common-sdk/lib/serializationHelpers";
+import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction } from "./type";
 
+// Transaction-related constants
 const MAX_CHUNK_SIZE = 255;
 const MAX_SCHEDULE_CHUNK_SIZE = 15;
 const HEADER_LENGTH = 60;
@@ -13,18 +15,25 @@ const TRANSACTION_KIND_LENGTH = 1;
 const INDEX_LENGTH = 1;
 const ONE_OCTET_LENGTH = 1;
 const BITMAP_LENGTH = 2;
+
+// Payload-related constants
 const STAKING_PAYLOAD_LENGTH = 8;
 const RESTAKE_EARNINGS_PAYLOAD_LENGTH = 1;
 const OPEN_FOR_DELEGATION_PAYLOAD_LENGTH = 1;
+
+// Key-related constants
 const KEYS_AGGREGATION_LENGTH = 160;
 const KEYS_ELECTION_AND_SIGNATURE_LENGTH = 192;
 const KEYS_PAYLOAD_LENGTH = KEYS_ELECTION_AND_SIGNATURE_LENGTH + KEYS_AGGREGATION_LENGTH;
+const KEY_LENGTH = 32;
+
+// Metadata and commission-related constants
 const METADATA_URL_LENGTH = 2;
 const TRANSACTION_FEE_COMMISSION_LENGTH = 4;
 const BAKING_REWARD_COMMISSION_LENGTH = 4;
-const REVOCATION_THRESHOLD_LENGTH = 4;
 const FINALIZATION_REWARD_COMMISSION_LENGTH = 4;
-const KEY_LENGTH = 32;
+
+// Credential and identity-related constants
 const REG_ID_LENGTH = 48;
 const IP_IDENTITY_LENGTH = 4;
 const AR_DATA_LENGTH = 2;
@@ -37,6 +46,11 @@ const VALUE_LENGTH = 1;
 const PROOF_LENGTH_LENGTH = 4;
 const CREDENTIAL_ID_LENGTH = 48;
 
+/**
+ * Serializes a BIP32 path into a buffer.
+ * @param {number[]} path - The BIP32 path as an array of numbers.
+ * @returns {Buffer} - The serialized path as a buffer.
+ */
 const serializePath = (path: number[]): Buffer => {
   const buf = Buffer.alloc(1 + path.length * 4);
   buf.writeUInt8(path.length, 0);
@@ -46,6 +60,11 @@ const serializePath = (path: number[]): Buffer => {
   return buf;
 };
 
+/**
+ * Splits a BIP32 path string into an array of numbers.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {number[]} - The path as an array of numbers.
+ */
 export const splitPath = (path: string): number[] => {
   const result: number[] = [];
   const components = path.split("/");
@@ -54,7 +73,7 @@ export const splitPath = (path: string): number[] => {
     if (isNaN(number)) {
       return;
     }
-    if (element.length > 1 && element[element.length - 1] === "'") {
+    if (element.length > 1 && element.endsWith("'")) {
       number += 0x80000000;
     }
     result.push(number);
@@ -62,12 +81,23 @@ export const splitPath = (path: string): number[] => {
   return result;
 };
 
+/**
+ * Converts a BIP32 path string to a buffer.
+ * @param {string} originalPath - The BIP32 path as a string.
+ * @returns {Buffer} - The path as a buffer.
+ */
 export const pathToBuffer = (originalPath: string): Buffer => {
   const path = originalPath;
   const pathNums: number[] = BIPPath.fromString(path).toPathArray();
   return serializePath(pathNums);
 };
 
+/**
+ * Serializes transaction payloads with a derivation path.
+ * @param {string} path - The BIP32 path as a string.
+ * @param {Buffer} rawTx - The raw transaction data.
+ * @returns {Buffer[]} - An array of serialized payload buffers.
+ */
 const serializeTransactionPayloadsWithDerivationPath = (path: string, rawTx: Buffer): Buffer[] => {
   const paths = splitPath(path);
   let offset = 0;
@@ -102,12 +132,15 @@ const serializeTransactionPayloadsWithDerivationPath = (path: string, rawTx: Buf
   return payloads;
 };
 
-
+/**
+ * Serializes transaction payloads without a derivation path.
+ * @param {Buffer} rawTx - The raw transaction data.
+ * @returns {Buffer[]} - An array of serialized payload buffers.
+ */
 export const serializeTransactionPayloads = (rawTx: Buffer): Buffer[] => {
   let offset = 0;
   const payloads: Buffer[] = [];
   while (offset !== rawTx.length) {
-    const first = offset === 0;
     let chunkSize =
       offset + MAX_CHUNK_SIZE > rawTx.length
         ? rawTx.length - offset
@@ -125,20 +158,37 @@ export const serializeTransactionPayloads = (rawTx: Buffer): Buffer[] => {
   return payloads;
 };
 
-
-export const serializeTransaction = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes an account transaction with a derivation path.
+ * @param {AccountTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeTransaction = (txn: AccountTransaction, path: string): { payloads: Buffer[] } => {
   const txSerialized = serializeAccountTransaction(txn);
   const payloads = serializeTransactionPayloadsWithDerivationPath(path, txSerialized);
   return { payloads };
 }
 
-export const serializeSimpleTransfer = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes a simple transfer transaction.
+ * @param {ISimpleTransferTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeSimpleTransfer = (txn: ISimpleTransferTransaction, path: string): { payloads: Buffer[] } => {
   return serializeTransaction(txn, path);
 };
 
-export const serializeSimpleTransferWithMemo = (txn: any, path: string): { payloadHeaderAddressMemoLength: Buffer[], payloadsMemo: Buffer[], payloadsAmount: Buffer[] } => {
+/**
+ * Serializes a simple transfer transaction with a memo.
+ * @param {ISimpleTransferWithMemoTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeaderAddressMemoLength: Buffer[], payloadsMemo: Buffer[], payloadsAmount: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeSimpleTransferWithMemo = (txn: ISimpleTransferWithMemoTransaction, path: string): { payloadHeaderAddressMemoLength: Buffer[], payloadsMemo: Buffer[], payloadsAmount: Buffer[] } => {
   // Convert the string to a buffer
-  const memo: string = txn.payload.memo;
+  const memo: string = txn.payload.memo.toString();
   const memoBuffer = NodeBuffer.from(memo, 'utf-8');
   // Encode the buffer as a DataBlob
   txn.payload.memo = new DataBlob(memoBuffer);
@@ -157,12 +207,16 @@ export const serializeSimpleTransferWithMemo = (txn: any, path: string): { paylo
   const payloadsMemo = serializeTransactionPayloads(serializedMemo.subarray(2));
   const payloadsAmount = serializeTransactionPayloads(serializedAmount);
 
-
-
   return { payloadHeaderAddressMemoLength, payloadsMemo, payloadsAmount };
 };
 
-export const serializeTransferWithSchedule = (txn: any, path: string): { payloadHeaderAddressScheduleLength: Buffer[], payloadsSchedule: Buffer[] } => {
+/**
+ * Serializes a transfer transaction with a schedule.
+ * @param {ISimpleTransferWithScheduleTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeaderAddressScheduleLength: Buffer[], payloadsSchedule: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeTransferWithSchedule = (txn: ISimpleTransferWithScheduleTransaction, path: string): { payloadHeaderAddressScheduleLength: Buffer[], payloadsSchedule: Buffer[] } => {
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
   const toAddressBuffer = AccountAddress.toBuffer(txn.payload.toAddress);
   const scheduleLength = encodeInt8(txn.payload.schedule.length);
@@ -191,11 +245,23 @@ export const serializeTransferWithSchedule = (txn: any, path: string): { payload
   return { payloadHeaderAddressScheduleLength, payloadsSchedule };
 };
 
-export const serializeConfigureDelegation = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes a configure delegation transaction.
+ * @param {IConfigureDelegationTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeConfigureDelegation = (txn: IConfigureDelegationTransaction, path: string): { payloads: Buffer[] } => {
   return serializeTransaction(txn, path);
 };
 
-export const serializeConfigureBaker = (txn: any, path: string): { payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer } => {
+/**
+ * Serializes a configure baker transaction.
+ * @param {IConfigureBakerTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer }} - An object containing serialized payloads.
+ */
+export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: string): { payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer } => {
   let stake: Buffer = Buffer.alloc(0);
   let restakeEarnings: Buffer = Buffer.alloc(0);
   let openForDelegation: Buffer = Buffer.alloc(0);
@@ -242,7 +308,6 @@ export const serializeConfigureBaker = (txn: any, path: string): { payloadHeader
   }
   if (txn.payload.hasOwnProperty('finalizationRewardCommission')) {
     finalizationRewardCommission = txSerialized.subarray(offset, offset + FINALIZATION_REWARD_COMMISSION_LENGTH);
-    offset += FINALIZATION_REWARD_COMMISSION_LENGTH;
   }
 
   const payloadHeaderKindAndBitmap = serializeTransactionPayloadsWithDerivationPath(path, headerKindAndBitmap);
@@ -255,10 +320,15 @@ export const serializeConfigureBaker = (txn: any, path: string): { payloadHeader
   return { payloadHeaderKindAndBitmap: payloadHeaderKindAndBitmap[0], payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee };
 };
 
-
-export const serializeTransferWithScheduleAndMemo = (txn: any, path: string): { payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] } => {
+/**
+ * Serializes a transfer transaction with a schedule and memo.
+ * @param {ISimpleTransferWithScheduleAndMemoTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeTransferWithScheduleAndMemo = (txn: ISimpleTransferWithScheduleAndMemoTransaction, path: string): { payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] } => {
   // Convert the string to a buffer
-  const memo: string = txn.payload.memo;
+  const memo: string = txn.payload.memo as string;
   const memoBuffer = NodeBuffer.from(memo, 'utf-8');
   // Encode the buffer as a DataBlob
   txn.payload.memo = new DataBlob(memoBuffer);
@@ -294,9 +364,15 @@ export const serializeTransferWithScheduleAndMemo = (txn: any, path: string): { 
   return { payloadHeaderAddressScheduleLengthAndMemoLength, payloadMemo, payloadsSchedule };
 };
 
-export const serializeRegisterData = (txn: any, path: string): { payloadHeader: Buffer[], payloadsData: Buffer[] } => {
+/**
+ * Serializes a register data transaction.
+ * @param {IRegisterDataTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeader: Buffer[], payloadsData: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeRegisterData = (txn: IRegisterDataTransaction, path: string): { payloadHeader: Buffer[], payloadsData: Buffer[] } => {
   // Convert the string to a buffer
-  const data: string = txn.payload.data;
+  const data: string = txn.payload.data as string;
   const dataBuffer = NodeBuffer.from(data, 'utf-8');
   // Encode the buffer as a DataBlob
   txn.payload.data = new DataBlob(dataBuffer);
@@ -314,7 +390,13 @@ export const serializeRegisterData = (txn: any, path: string): { payloadHeader: 
   return { payloadHeader, payloadsData };
 };
 
-export const serializeTransferToPublic = (txn: any, path: string): { payloadHeader: Buffer[], payloadsAmountAndProofsLength: Buffer[], payloadsProofs: Buffer[] } => {
+/**
+ * Serializes a transfer to public transaction.
+ * @param {ITransferToPublicTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeader: Buffer[], payloadsAmountAndProofsLength: Buffer[], payloadsProofs: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeTransferToPublic = (txn: ITransferToPublicTransaction, path: string): { payloadHeader: Buffer[], payloadsAmountAndProofsLength: Buffer[], payloadsProofs: Buffer[] } => {
   const remainingAmount = Buffer.from(txn.payload.remainingAmount, 'hex');
   const transferAmount = encodeWord64(txn.payload.transferAmount.microCcdAmount);
   const index = encodeWord64(txn.payload.index);
@@ -334,45 +416,63 @@ export const serializeTransferToPublic = (txn: any, path: string): { payloadHead
   return { payloadHeader, payloadsAmountAndProofsLength, payloadsProofs };
 };
 
-export const serializeDeployModule = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes a deploy module transaction.
+ * @param {IDeployModuleTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeDeployModule = (txn: IDeployModuleTransaction, path: string): { payloads: Buffer[] } => {
   return serializeTransaction(txn, path);
 };
 
-export const serializeInitContract = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes an init contract transaction.
+ * @param {IInitContractTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeInitContract = (txn: IInitContractTransaction, path: string): { payloads: Buffer[] } => {
   return serializeTransaction(txn, path);
 };
 
-export const serializeUpdateContract = (txn: any, path: string): { payloads: Buffer[] } => {
+/**
+ * Serializes an update contract transaction.
+ * @param {IUpdateContractTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
+ */
+export const serializeUpdateContract = (txn: IUpdateContractTransaction, path: string): { payloads: Buffer[] } => {
   return serializeTransaction(txn, path);
 };
 
-export const serializeCredentialDeployment = (txn: any, path: string): { payloadDerivationPath: Buffer, numberOfVerificationKeys: Buffer, keyIndexAndSchemeAndVerificationKey: Buffer, thresholdAndRegIdAndIPIdentity: Buffer, encIdCredPubShareAndKey: Buffer, validToAndCreatedAtAndAttributesLength: Buffer, attributesLength: Buffer, tag: Buffer[], valueLength: Buffer[], value: Buffer[], proofLength: Buffer, proofs: Buffer } => {
+/**
+ * Serializes a credential deployment transaction.
+ * @param {ICredentialDeploymentTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadDerivationPath: Buffer, numberOfVerificationKeys: Buffer, keyIndexAndSchemeAndVerificationKey: Buffer, thresholdAndRegIdAndIPIdentity: Buffer, encIdCredPubShareAndKey: Buffer, validToAndCreatedAtAndAttributesLength: Buffer, attributesLength: Buffer, tag: Buffer[], valueLength: Buffer[], value: Buffer[], proofLength: Buffer, proofs: Buffer }} - An object containing serialized payloads.
+ */
+export const serializeCredentialDeployment = (txn: ICredentialDeploymentTransaction, path: string): { payloadDerivationPath: Buffer, numberOfVerificationKeys: Buffer, keyIndexAndSchemeAndVerificationKey: Buffer, thresholdAndRegIdAndIPIdentity: Buffer, encIdCredPubShareAndKey: Buffer, validToAndCreatedAtAndAttributesLength: Buffer, attributesLength: Buffer, tag: Buffer[], valueLength: Buffer[], value: Buffer[], proofLength: Buffer, proofs: Buffer } => {
   let offset = 0;
   const txSerialized = serializeCredentialDeploymentInfo(txn);
   const payloadDerivationPath = pathToBuffer(path);
-  let numberOfVerificationKeys: Buffer = Buffer.alloc(0);
-  let keyIndexAndSchemeAndVerificationKey: Buffer = Buffer.alloc(0);
-  let thresholdAndRegIdAndIPIdentity: Buffer = Buffer.alloc(0);
-  let encIdCredPubShareAndKey: Buffer = Buffer.alloc(0);
-  let validToAndCreatedAtAndAttributesLength: Buffer = Buffer.alloc(0);
-  let attributesLength: Buffer = Buffer.alloc(0);
   let tag: Buffer[] = [];
   let valueLength: Buffer[] = [];
   let value: Buffer[] = [];
   let proofLength: Buffer = Buffer.alloc(0);
   let proofs: Buffer = Buffer.alloc(0);
 
-  numberOfVerificationKeys = Buffer.from(txSerialized.subarray(offset, offset + INDEX_LENGTH));
+  const numberOfVerificationKeys = Buffer.from(txSerialized.subarray(offset, offset + INDEX_LENGTH));
   offset += INDEX_LENGTH;
-  keyIndexAndSchemeAndVerificationKey = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + KEY_LENGTH));
+  const keyIndexAndSchemeAndVerificationKey = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + KEY_LENGTH));
   offset += 2 * ONE_OCTET_LENGTH + KEY_LENGTH;
-  thresholdAndRegIdAndIPIdentity = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + REG_ID_LENGTH + IP_IDENTITY_LENGTH + AR_DATA_LENGTH));
+  const thresholdAndRegIdAndIPIdentity = Buffer.from(txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH + REG_ID_LENGTH + IP_IDENTITY_LENGTH + AR_DATA_LENGTH));
   offset += 2 * ONE_OCTET_LENGTH + REG_ID_LENGTH + IP_IDENTITY_LENGTH + AR_DATA_LENGTH;
-  encIdCredPubShareAndKey = Buffer.from(txSerialized.subarray(offset, offset + 4 * ONE_OCTET_LENGTH + ID_CRED_PUB_SHARE_LENGTH));
+  const encIdCredPubShareAndKey = Buffer.from(txSerialized.subarray(offset, offset + 4 * ONE_OCTET_LENGTH + ID_CRED_PUB_SHARE_LENGTH));
   offset += 4 * ONE_OCTET_LENGTH + ID_CRED_PUB_SHARE_LENGTH;
-  validToAndCreatedAtAndAttributesLength = Buffer.from(txSerialized.subarray(offset, offset + ATTRIBUTES_LENGTH + VALID_TO_LENGTH + CREATED_AT_LENGTH));
+  const validToAndCreatedAtAndAttributesLength = Buffer.from(txSerialized.subarray(offset, offset + ATTRIBUTES_LENGTH + VALID_TO_LENGTH + CREATED_AT_LENGTH));
   offset += ATTRIBUTES_LENGTH + VALID_TO_LENGTH + CREATED_AT_LENGTH;
-  attributesLength = validToAndCreatedAtAndAttributesLength.subarray(-ATTRIBUTES_LENGTH);
+  const attributesLength = validToAndCreatedAtAndAttributesLength.subarray(-ATTRIBUTES_LENGTH);
   tag = [];
   valueLength = [];
   value = [];
@@ -388,12 +488,17 @@ export const serializeCredentialDeployment = (txn: any, path: string): { payload
   proofLength = Buffer.from(txSerialized.subarray(offset, offset + PROOF_LENGTH_LENGTH));
   offset += PROOF_LENGTH_LENGTH;
   proofs = Buffer.from(txSerialized.subarray(offset, offset + proofLength.readUInt32BE(0)));
-  offset += proofLength.readUInt32BE(0);
 
   return { payloadDerivationPath, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, attributesLength, tag, valueLength, value, proofLength, proofs };
 };
 
-export const serializeUpdateCredentials = (txn: any, path: string): { payloadHeaderKindAndIndexLength: Buffer[], credentialIndex: Buffer[], numberOfVerificationKeys: Buffer[], keyIndexAndSchemeAndVerificationKey: Buffer[], thresholdAndRegIdAndIPIdentity: Buffer[], encIdCredPubShareAndKey: Buffer[], validToAndCreatedAtAndAttributesLength: Buffer[], attributesLength: Buffer[], tag: Buffer[][], valueLength: Buffer[][], value: Buffer[][], proofLength: Buffer[], proofs: Buffer[], credentialIdCount: Buffer, credentialIds: Buffer[], threshold: Buffer } => {
+/**
+ * Serializes an update credentials transaction.
+ * @param {IUpdateCredentialsTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadHeaderKindAndIndexLength: Buffer[], credentialIndex: Buffer[], numberOfVerificationKeys: Buffer[], keyIndexAndSchemeAndVerificationKey: Buffer[], thresholdAndRegIdAndIPIdentity: Buffer[], encIdCredPubShareAndKey: Buffer[], validToAndCreatedAtAndAttributesLength: Buffer[], attributesLength: Buffer[], tag: Buffer[][], valueLength: Buffer[][], value: Buffer[][], proofLength: Buffer[], proofs: Buffer[], credentialIdCount: Buffer, credentialIds: Buffer[], threshold: Buffer }} - An object containing serialized payloads.
+ */
+export const serializeUpdateCredentials = (txn: IUpdateCredentialsTransaction, path: string): { payloadHeaderKindAndIndexLength: Buffer[], credentialIndex: Buffer[], numberOfVerificationKeys: Buffer[], keyIndexAndSchemeAndVerificationKey: Buffer[], thresholdAndRegIdAndIPIdentity: Buffer[], encIdCredPubShareAndKey: Buffer[], validToAndCreatedAtAndAttributesLength: Buffer[], attributesLength: Buffer[], tag: Buffer[][], valueLength: Buffer[][], value: Buffer[][], proofLength: Buffer[], proofs: Buffer[], credentialIdCount: Buffer, credentialIds: Buffer[], threshold: Buffer } => {
   let offset = 0;
   const txSerialized = serializeAccountTransaction(txn);
   const headerKindAndIndexLength = txSerialized.subarray(offset, offset + HEADER_LENGTH + TRANSACTION_KIND_LENGTH + INDEX_LENGTH);
@@ -453,22 +558,30 @@ export const serializeUpdateCredentials = (txn: any, path: string): { payloadHea
     offset += CREDENTIAL_ID_LENGTH;
   }
   const threshold = txSerialized.subarray(offset, offset + ONE_OCTET_LENGTH);
-  offset += ONE_OCTET_LENGTH;
+
   return { payloadHeaderKindAndIndexLength, credentialIndex, numberOfVerificationKeys, keyIndexAndSchemeAndVerificationKey, thresholdAndRegIdAndIPIdentity, encIdCredPubShareAndKey, validToAndCreatedAtAndAttributesLength, attributesLength, tag, valueLength, value, proofLength, proofs, credentialIdCount, credentialIds, threshold };
 };
 
-export const serializePublicInfoForIp = (txn: any, path: string): { payloadIdCredPubAndRegIdAndKeysLenght: Buffer, payloadKeys: Buffer[], payloadThreshold: Buffer } => {
+/**
+ * Serializes public information for an IP transaction.
+ * @param {IPublicInfoForIpTransaction} txn - The transaction to serialize.
+ * @param {string} path - The BIP32 path as a string.
+ * @returns {{ payloadIdCredPubAndRegIdAndKeysLenght: Buffer, payloadKeys: Buffer[], payloadThreshold: Buffer }} - An object containing serialized payloads.
+ */
+export const serializePublicInfoForIp = (txn: IPublicInfoForIpTransaction, path: string): { payloadIdCredPubAndRegIdAndKeysLenght: Buffer, payloadKeys: Buffer[], payloadThreshold: Buffer } => {
+
+  const pathBuffer = pathToBuffer(path);
 
   const serializedIdCredPub = Buffer.from(txn.idCredPub, 'hex');
   const serializedRegId = Buffer.from(txn.regId, 'hex');
   const serializedPublicKeys = serializeMap(txn.publicKeys.keys, encodeWord8, encodeWord8FromString, serializeVerifyKey);
   const payloadThreshold = encodeInt8(txn.publicKeys.threshold);
 
-  const payloadIdCredPubAndRegIdAndKeysLenght = Buffer.concat([serializedIdCredPub, serializedRegId, serializedPublicKeys.subarray(0, 1)]);
+  const payloadIdCredPubAndRegIdAndKeysLenght = Buffer.concat([pathBuffer,serializedIdCredPub, serializedRegId, serializedPublicKeys.subarray(0, 1)]);
 
   let payloadKeys: Buffer[] = [];
   for (let i = 0; i < Object.keys(txn.publicKeys.keys).length; i++) {
-    payloadKeys.push(Buffer.concat([serializedPublicKeys.subarray(i * (KEY_LENGTH + 2*ONE_OCTET_LENGTH) + 1, (i + 1) * (KEY_LENGTH + 2*ONE_OCTET_LENGTH) + 1)]));
+    payloadKeys.push(Buffer.concat([serializedPublicKeys.subarray(i * (KEY_LENGTH + 2 * ONE_OCTET_LENGTH) + 1, (i + 1) * (KEY_LENGTH + 2 * ONE_OCTET_LENGTH) + 1)]));
   }
 
   return { payloadIdCredPubAndRegIdAndKeysLenght, payloadKeys, payloadThreshold };
