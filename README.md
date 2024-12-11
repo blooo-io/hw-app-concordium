@@ -1,25 +1,14 @@
-<img src="https://user-images.githubusercontent.com/4631227/191834116-59cf590e-25cc-4956-ae5c-812ea464f324.png" height="100" />
+# Concordium JavaScript SDK
 
-[GitHub](https://github.com/LedgerHQ/ledger-live/),
-[Ledger Devs Discord](https://developers.ledger.com/discord-pro),
-[Developer Portal](https://developers.ledger.com/)
+This repository contains JavaScript bindings for interacting with the Concordium blockchain. It provides various functions to handle transactions, contracts, and credentials.
 
-## @ledgerhq/hw-app-algorand
+## Installation
 
-Ledger Hardware Wallet Algorand JavaScript bindings.
+To use this SDK, install it via npm:
 
-***
-
-## Are you adding Ledger support to your software wallet?
-
-You may be using this package to communicate with the Algorand Nano App.
-
-For a smooth and quick integration:
-
-*   See the developers’ documentation on the [Developer Portal](https://developers.ledger.com/docs/transport/overview/) and
-*   Go on [Discord](https://developers.ledger.com/discord-pro/) to chat with developer support and the developer community.
-
-***
+```bash
+npm install @blooo-io/hw-app-concordium
+```
 
 ## API
 
@@ -27,41 +16,812 @@ For a smooth and quick integration:
 
 #### Table of Contents
 
-*   [Algorand](#algorand)
+*   [Concordium](#Concordium)
     *   [Parameters](#parameters)
     *   [Examples](#examples)
-    *   [getAddress](#getaddress)
-        *   [Parameters](#parameters-1)
-        *   [Examples](#examples-1)
+        *   [getPublicKey](#getpublickey)
+            *   [Parameters](#parameters-getpublickey)
+            *   [Return](#return-getpublickey)
+            *   [Examples](#examples-getpublickey)
+        *   [exportPrivateKey](#exportprivatekey)
+            *   [Parameters](#parameters-exportprivatekey)
+            *   [Return](#return-exportprivatekey)
+            *   [Examples](#examples-exportprivatekey)
+        *   [verifyAddress](#verifyaddress)
+            *   [Parameters](#parameters-verifyaddress)
+            *   [Return](#return-verifyaddress)
+            *   [Examples](#examples-verifyaddress)
+        *   [signTransfer](#signtransfer)
+            *   [Parameters](#parameters-signtransfer)
+            *   [Return](#return-signtransfer)
+            *   [Examples](#examples-signtransfer)
+        *   [signTransferWithMemo](#signtransferwithmemo)
+            *   [Parameters](#parameters-signtransferwithmemo)
+            *   [Return](#return-signtransferwithmemo)
+            *   [Examples](#examples-signtransferwithmemo)
+        *   [signTransferWithSchedule](#signtransferwithschedule)
+            *   [Parameters](#parameters-signtransferwithschedule)
+            *   [Return](#return-signtransferwithschedule)
+            *   [Examples](#examples-signtransferwithschedule)
+        *   [signTransferWithScheduleAndMemo](#signtransferwithscheduleandmemo)
+            *   [Parameters](#parameters-signtransferwithscheduleandmemo)
+            *   [Return](#return-signtransferwithscheduleandmemo)
+            *   [Examples](#examples-signtransferwithscheduleandmemo)
+        *   [signDeployModule](#signdeploymodule)
+            *   [Parameters](#parameters-signdeploymodule)
+            *   [Return](#return-signdeploymodule)
+            *   [Examples](#examples-signdeploymodule)
+        *   [signInitContract](#signinitcontract)
+            *   [Parameters](#parameters-signinitcontract)
+            *   [Return](#return-signinitcontract)
+            *   [Examples](#examples-signinitcontract)
+        *   [signUpdateContract](#signupdatecontract)
+            *   [Parameters](#parameters-signupdatecontract)
+            *   [Return](#return-signupdatecontract)
+            *   [Examples](#examples-signupdatecontract)
+        *   [SignPublicInfoForIp](#signpublicinfoforip)
+            *   [Parameters](#parameters-signpublicinfoforip)
+            *   [Return](#return-signpublicinfoforip)
+            *   [Examples](#examples-signpublicinfoforip)
+        *   [signCredentialDeployment](#signcredentialdeployment)
+            *   [Parameters](#parameters-signcredentialdeployment)
+            *   [Return](#return-signcredentialdeployment)
+            *   [Examples](#examples-signcredentialdeployment)
+        *   [signUpdateCredentials](#signupdatecredentials)
+            *   [Parameters](#parameters-signupdatecredentials)
+            *   [Return](#return-signupdatecredentials)
+            *   [Examples](#examples-signupdatecredentials)
 
-### Algorand
+### Concordium
 
-Algorand API
+Concordium API
 
 #### Parameters
 
 *   `transport` **Transport**&#x20;
 
-#### Examples
+## Usage
+
+Below are examples of how to use the various functions provided by the SDK.
+
+### GetPublicKey
+
+#### Parameters-GetPublicKey
+
+*   `path` **string**&#x20; - A BIP32 path.
+*   `display` **boolean**&#x20; - Flag to show display.
+*   `signedKey` **boolean**&#x20; - Flag to sign key.
+
+#### Return-GetPublicKey
+
+*   `publicKey` **string**&#x20; - The public key.
+*   `signedPublicKey` **string**&#x20; - Only if signedKey is true. The signed public key.
+
+#### Examples-GetPublicKey
 
 ```javascript
-import Algorand from "@ledgerhq/hw-app-algorand";
-const algo = new Algorand(transport)
+const { publicKey } = await ccd.getPublicKey("44/919/0/0/0/0", true, false);
+Or
+const { publicKey, signedPublicKey } = await ccd.getPublicKey("44/919/0/0/0/0", true, true);
 ```
 
-#### getAddress
+### ExportPrivateKey
 
-get Algorant address for a given BIP 32 path.
+#### Parameters-ExportPrivateKey
 
-##### Parameters
+*   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key.
+*   `exportType` **ExportType**&#x20; - The type of export, either PRF_KEY_SEED or PRF_KEY.
+*   `mode` **Mode**&#x20; - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+*   `isLegacy` **boolean**&#x20; - Flag to indicate if the legacy mode is used.
 
-*   `path` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** a path in BIP 32 format
-*   `boolDisplay` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)?**&#x20;
+#### Return-ExportPrivateKey
 
-##### Examples
+*   `privateKey` **string**&#x20; - The private key.
+*   `credentialId` **string**&#x20; - Only if mode is EXPORT_CRED_ID. The credential ID.
+
+#### Examples-ExportPrivateKey
 
 ```javascript
-cosmos.getAddress("44'/283'/0'/0/0").then(o => o.address)
+const { privateKey } = await ccd.exportPrivateKey(data, exportType, mode, isLegacy);
+Or
+const { privateKey, credentialId } = await ccd.exportPrivateKey(data, exportType, mode, isLegacy);
 ```
 
-Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)<{publicKey: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String), address: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)}>** an object with a publicKey, address and (optionally) chainCode
+### VerifyAddress
+
+#### Parameters-VerifyAddress
+
+*   `isLegacy` **boolean**&#x20; - Flag to indicate if the legacy mode is used.
+*   `id` **number**&#x20; - The identity number.
+*   `cred` **number**&#x20; - The credential number.
+*   `idp` **number**&#x20; - Mandatory only if isLegacy is false. The identity provider number.
+
+#### Return-VerifyAddress
+
+*   `status` **string**&#x20; - The status of the verification.
+
+#### Examples-VerifyAddress
+
+```javascript
+const { status } = await ccd.verifyAddress(true, 12, 12);
+Or
+const { status } = await ccd.verifyAddress(false, 12, 12, 12);
+```
+
+### SignTransfer
+
+#### Parameters-SignTransfer
+
+*   `tx` **ISimpleTransferTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignTransfer
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignTransfer
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const simpleTransfer = {
+    amount: CcdAmount.fromMicroCcd("999"),
+    toAddress,
+};
+
+const tx = {
+    sender,
+    nonce: nonce.toString(),
+    expiry: BigInt(1745517351),
+    energyAmount: '100',
+    transactionKind: AccountTransactionType.Transfer,
+    payload: simpleTransfer,
+};
+
+const { signature } = await ccd.signTransfer(tx, "44/919/0/0/0/0");
+```
+
+### SignTransferWithMemo
+
+#### Parameters-SignTransferWithMemo
+
+*   `tx` **ISimpleTransferWithMemoTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignTransferWithMemo
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignTransferWithMemo
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const simpleTransferWithMemo = {
+  amount: CcdAmount.fromMicroCcd("999"),
+  toAddress,
+  memo: "Test memo",
+};
+
+const txWithMemo = {
+  sender,
+  nonce: "1234",
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.TransferWithMemo,
+  payload: simpleTransferWithMemo,
+};
+
+const { signature } = await ccd.signTransferWithMemo(txWithMemo, "44/919/0/0/0/0");
+```
+
+### SignTransferWithSchedule
+
+#### Parameters-SignTransferWithSchedule
+
+*   `tx` **ISimpleTransferWithScheduleTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignTransferWithSchedule
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignTransferWithSchedule
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const simpleTransferWithSchedule = {
+  toAddress: recipient,
+  schedule: [
+    { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" },
+  ],
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.TransferWithSchedule,
+  payload: simpleTransferWithSchedule,
+};
+
+const { signature } = await ccd.signTransferWithSchedule(tx, "44/919/0/0/0/0");
+```
+
+### SignTransferWithScheduleAndMemo
+
+#### Parameters-SignTransferWithScheduleAndMemo
+
+*   `tx` **ISimpleTransferWithScheduleAndMemoTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignTransferWithScheduleAndMemo
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignTransferWithScheduleAndMemo
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const simpleTransferWithScheduleAndMemo = {
+  toAddress: recipient,
+  schedule: [
+    { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" },
+    { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" },
+    { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" }, { timestamp: "123456", amount: "999" },
+  ],
+  memo: "dtest",
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.TransferWithScheduleAndMemo,
+  payload: simpleTransferWithScheduleAndMemo,
+};
+
+const { signature } = await ccd.signTransferWithScheduleAndMemo(tx, "44/919/0/0/0/0");
+```
+
+### SignConfigureDelegation
+
+#### Parameters-SignConfigureDelegation
+
+*   `tx` **IConfigureDelegationTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignConfigureDelegation
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignConfigureDelegation
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const configureDelegation = {
+  stake: CcdAmount.fromMicroCcd("999"),
+  restakeEarnings: false,
+  delegationTarget: {
+    delegateType: "Baker",
+    bakerId: BigInt(12),
+  },
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.ConfigureDelegation,
+  payload: configureDelegation,
+};
+
+const { signature } = await ccd.signConfigureDelegation(tx, "44/919/0/0/0/0");
+```
+
+### SignConfigureBaker
+
+#### Parameters-SignConfigureBaker
+
+*   `tx` **IConfigureBakerTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignConfigureBaker
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignConfigureBaker
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const configureBaker = {
+    stake: CcdAmount.fromMicroCcd("999"),
+    restakeEarnings: false,
+    openForDelegation: 0,
+    keys: {
+      signatureVerifyKey: "7873cd57848d7aea7be03fbb3f1e8b9e69987fc73f13e473356776a16f26c96b",
+      electionVerifyKey: "32f892fb3d0dc6138976b6848259cf730e37fa4a61a659c782ec6def978c0828",
+      aggregationVerifyKey: "7873cd57848d7aea7be03fbb3f1e8b9e69987fc73f13e473356776a16f26c96b32f892fb3d0dc6138976b6848259cf730e37fa4a61a659c782ec6def978c082832f892fb3d0dc6138976b6848259cf730e37fa4a61a659c782ec6def978c0828",
+      proofAggregation: "957aec4b2b7ed979ba2079d62246d135aefd61e7f46690c452fec8bcbb593481e229f6f1968194a09cf612490887e71d96730e2d852201e53fec9c89d36f8a90",
+      proofSig: "a47cdf9133572e9ad5c02c3a7ffd1d05db7bb98860d918092454146153d62788f224c0157c65853ed4a0245ab3e0a593a3f85fa81cc4cb99eeaa643bfc793eab",
+      proofElection: "01fc695a8c51d4599cbe032a39832ad49bab900d88105b01d025b760b0d0d555b8c828f2d8fe29cc78c6307d979e6358b8bba9cf4d8200f272cc85b2a3813eff",
+    },
+    metadataUrl: "https://example.com",
+    transactionFeeCommission: 10,
+    bakingRewardCommission: 10,
+    finalizationRewardCommission: 10,
+  };
+
+  const tx = {
+    sender,
+    nonce: nonce.toString(),
+    expiry: BigInt(123456),
+    energyAmount: '1234',
+    transactionKind: AccountTransactionType.ConfigureBaker,
+    payload: configureBaker,
+  };
+
+  const { signature } = await ccd.signConfigureBaker(tx, "44/919/0/0/0/0");
+```
+
+### SignRegisterData
+
+#### Parameters-SignRegisterData
+
+*   `tx` **IRegisterDataTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignRegisterData
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignRegisterData
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const registerData = {
+  data: "dtest",
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.RegisterData,
+  payload: registerData,
+};
+
+const { signature } = await ccd.signRegisterData(tx, "44/919/0/0/0/0");
+```
+
+### SignTransferToPublic
+
+#### Parameters-SignTransferToPublic
+
+*   `tx` **ITransferToPublicTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignTransferToPublic
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignTransferToPublic
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const transferToPublic = {
+    remainingAmount: "AF1E9793F4B5E6A83949C75668AAB1AE8780C813633979FDED1585909325FBC0B7D7E1A80FB8F4C2041B3EEB9B117ED88CC79006BC1ADE01B2A0BA6466C07C8B30D7421B019D5DB6D03FDC0487579FBE8DB4BF3F002FDF2D73FF10AC0F1A07AA93D0813AA53E04532746A4E81A0A03904D11D3A66B1E358504724788C57E9156579B28F9F5A6F828B080B9E70294FF8790AA2163787E230FEACA2B20FDB312C482CAF575FBEC760F39B5F1A6EE9F0A71C5BB0FBE3CD3334834746858F16CC200",
+    transferAmount: CcdAmount.fromMicroCcd("999"),
+    index: '1234',
+    proofs: "a47cdf9133572e9ad5c02c3a7ffd1d05db7bb98860d918092454146153d62788f224c0157c65853ed4a0245ab3e0a593a3f85fa81cc4cb99eeaa643bfc793eab01fc695a8c51d4599cbe032a39832ad49bab900d88105b01d025b760b0d0d555b8c828f2d8fe29cc78c6307d979e6358b8bba9cf4d8200f272cc85b2a3813eff957aec4b2b7ed979ba2079d62246d135aefd61e7f46690c452fec8bcbb593481e229f6f1968194a09cf612490887e71d96730e2d852201e53fec9c89d36f8a90a124bfe9d3a0da01249bbbfa5d51cde2da81e4f905849b9e0706bdbb7eb0c0875e12a18902359e613b64633146166872000100842763340db76ac5c80a205bda5b5316ff71683d78b482f7854b83ad55b294ca76219fe1a3cc33079bee95d88fcacff90000000000000005a43287b922ec1f58e48e9f66c5d73b14193b35c19d06b1726f284514c25db2954566e4943cd3589e98c1a6685f20c99d96bc2ca5f2d1b1dd98e9ee8b73bc3a84dc31a94f44bb043406c59229a11b741da702a7621524e7bee85f7fcd9fa2a2b08174536be08461dd43bec45838de2e7e5bc06bc1794403844ccd22a283897d8fc9f19b82032b0b3009ca22a4f935871483bae012befeb6374ac4549e615c20b8378049385f129c7bcaa73f7dff53475ab3e5c45f75ada7ec14ef0fb73b43a04ba2b17ef2bdad6fa5ecfec277d85426afd328b112132d6777b7ab49ee74c990c349f57126196f9d92b8216a03494b5d10ca0e16ea6cd6206e538eef8bb2aad9e575e75243e586064de5c1584eba1fd72e0000000500000001307a73f17a6ee00535dce62f022ab2246eddacb9ab3904eb0b1cf2f8fe598ea750a26560b1f8f1355f632ef5ee97098c04d6d8e9de6d0e77078e5e09d6f6355426978499bb410a7c015d86b26f72a32be1b9a0c3f6c7f205be9fbf49b4c4fd7e0000000204eff935bdd56a489ef400e642873f8c9472a739ed4b92222076165b8ef4f1886af3dd283d7866baa42fc7bd1e326674944d7b524b6ef12ebd6099c42627b5bf70adecb3b92b9ee996a06419d45e06ae059fcef4545acf59e612e3782ca6c458000000033b60dbcdca743789710d4ba9ce59f295a836cc64ce97c8c378d6e1367d49467c53f8bc63f6dfffae872181ea483f226e2b45292df65be921425de20cf0cb9b96131695525b2af5c0bc4780fd5f958f95bd948e155e8a3a61a44e5367e4645d37000000046ab002aa8779122cd9b0b043e83288a30a9f29707bd2c781b7b33b73abc025ab041e9578cc2337264913f9bf3aca5849dc285a54de3b098efe7cd44bbb60956f5b8c5ddec6a6056db2f6e4ec5cb705686cbfeefc15468229a0d40a92ca67bf900000000573d0721be638df4be39e1dd7fe1c171b6c3a710313be643da7c1f41bc164678c40b818a3d9060519c54d83d8fb55f6b652101476d93e22b124fc3ad78ad3fee609eb93ee519337f0e60fdd01b95456fc2c9165564c9ef6e70e07ab43dc8f31676da6743b0b5b4edb34687e4b22598af0296cfdd178319a69fd13f6ee81e468820000000851cf206b3d5fd7eaa043893517e7759c8a1380879f11327bbc2c84bb543daf83629c2332df19a349985d4512475b99773e75e2bd9b0c88e07014ce5b3b30411d624cb52699853264f031bce7e940250bbde60419e457400047a14e3c37576be35fcf0b0cca05a4cff3a2b3c88051fa2cafc89fb707aa1ca86769961f67dcf3560df1b51d5fb909414a3265d39d135a8007a3d92604f106f7380dcf94db8ea94124701f9657e6527e0dbab7d8c0993b027f60280e797eef2c848dd7e99698dfa512e152352e81ff2140c978f532d41c3ba6cb298c0aaee78424c81a42c89c1dd84e4f4ec62e1344c63237d34e1dfd9a0473e74de11e3681c6f525076b9a4089336d6622b55ffa2636f7d0a8488e7f4f9b5fbacc7c67e0ffe7024d9fa05eaf924a658f1f1d23ef0c63fd882371345517277f3027d7c7925129dbcc0d86f63193082a55f26ef315a9727268eaf8d7f290c1b8126305ced248048ee015024f78f2712c30aed9988375247df8fe614b925dbed6b8265e420c12cceefbad6c4fcc46c437c43ca4a02f0009cab6f92d45844ccd615a7f8f5d9c3e8395ec8720c7aec226058d6625a16202d6687b98c4287b5893691cd96de6e32bdb9db7f33a0b6b61e86a7773bddc4f5a27e89a6d2710afb62f56df8e794442d3c150382410b76236441fc6a3be61a33808d509c5623d8ca959a7e6aabef772713a2bd22bad3639b0182baee029aeee7863320af187579fd7ee73042b690e515fdc801b0fc905a11ecf119738ca62ad42f12e71a7d4d0aa3ef9f1428efe3346f45ee5fcede357ff03cb64e8a03ee5b467ec62db77733492cd2aee90f724975b3c3397de5f6e00eaa91148442c814f923bf2a0d3560447be8c350723777cf4a29d95733e4dbc755c2d0b616bb13392f38c49a5e21b0570db22492dfac261d214cf72bea26154f75c5b4803000b39f0b179499e5bafb5a53f9a25099a791a7ff8fcdfe02f9c9b271eea7e4407722b9bb0a70f04e538c3407d05734b629517e6146fa0b38f0d46717ba7048d0501d62d16a443e23ba180e67c37e5a85f102a35e2ee8bf2921a3e321036cd064a7f9ce3080db6b9b9cdaa658cffab5d2114f4f17f6397f82e35b4b4da39c50463070201af9df19e915b222f80b02fc2db1adf3e3fd1d90b7254d0360252d9baf1ba134dc6a20eecc2679e57f4d41b6358dba244091337769ea6172177b1549710a30aa087b877d8c3d6fc2c6a01d0d8ac6632ccfef6bb01720d61283604854a4ad0efe7c8501223ee671ce6dea2262dc9fe93954f42b69b186f78754e1a3eb45bf04c42e24f323a2a222a5e66c9fce617d62b445cfcffce789c315332ac6708bb4e4b8d24bcaa7130fca5332ffd0353e34a9c06ee0d3bba5811e506842a8c6a1049f20163ec4caaaf1b74d5ee000263653064a2f6cb5a92106ebe746a626fbc2cd04b13f96e897a0d9fe923bd8702e077625191728b17d0fe1c32ee49beb370cd0bbc57796c5c7e59d221903d814950de86ae5bd4bbcb6bbb8afc472f974a25b6f55e71ba298b718855d605a69503d855e659d610cb161f52cbb84b14d7a2c73824d63c8b1f449ef98e9857fa1435e9fb1e733060dd7a36edd0c5ce605ba95e4598a100000004aa9ef709ad51fbc44978124e1f07e2bdd7d2ae4030c6bc35b7a137cebebf9e2c94261f7ffd3d29798eed266776a46559a1bed13fd8ccda57df3aa2cca53e2241914f2f1ae93c6e11f45e149a30dbf48ecb193c58b96c4d0e4ef54ab48578aaf180f3be8b6691c31c03756b4145e9172617eadedef24dd41c6fefa4284fe0bb093574578bcb6153e16e339dcd339c68d682526770ac78df0c355ae3d5cbf3d279fc48aba80ba85b5502832039e78f1da8a30e9facae8712da6a56c526454104c2987499629970c704c761a2e4ca1074e517f71eaffe0056d4fc597f54c133923ce57284f87af842903a8187be8c1c6d07a6b68d84f0c45ed4661a84767608946a63d2a208529a0964248670a9bead664f5c6389d7a33cfe5f6237c71cd158b7dd8f57b9a108644f0faf1f8d362591d683edc8b951d03e52749d8c62ab92175310f33ad98221cde75265e201f70a14bbf2b20bf8d36524eb6b6eccead65382ce63c500b367407f1a43dbd2092d59426ce927bc0a1c0db982cb5fa58af5a7e5c32725af354be28346778cfae8194bcd76e174d1f7763dd5887d772f2e80343bfab80de4eddcd0417fe86d47f8abc2ff57ab8a42e6fb6856173dd0d8750abbad9678"
+  };
+
+  const tx = {
+    sender,
+    nonce: nonce.toString(),
+    expiry: BigInt(123),
+    energyAmount: '1234',
+    transactionKind: AccountTransactionType.TransferToPublic,
+    payload: transferToPublic,
+  };
+  const { signature } = await ccd.signTransferToPublic(tx, "44/919/0/0/0/0");
+```
+
+### SignDeployModule
+
+#### Parameters-SignDeployModule
+
+*   `tx` **IDeployModuleTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignDeployModule
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignDeployModule
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const deployModule = {
+    version: 12,
+    source: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+};
+
+const tx = {
+    sender,
+    nonce: nonce.toString(),
+    expiry: BigInt(123456),
+    energyAmount: '1234',
+    transactionKind: AccountTransactionType.DeployModule,
+    payload: deployModule,
+};
+
+const { signature } = await ccd.signDeployModule(tx, "44/919/0/0/0/0");
+```
+
+### SignInitContract
+
+#### Parameters-SignInitContract
+
+*   `tx` **IInitContractTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignInitContract
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignInitContract
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const moduleRef = "a00000000000000000000000000000000000000000000000000000000000000a";
+const initContract = {
+  amount: CcdAmount.fromMicroCcd("1000000000000"),
+  moduleRef: {
+    moduleRef, decodedModuleRef: new Uint8Array(Buffer.from(moduleRef, 'hex'))
+  },
+  initName: {
+    value: "Test Contract",
+  },
+  param: {
+    buffer: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+  },
+  maxContractExecutionEnergy: {
+    value: 1000
+  },
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.InitContract,
+  payload: initContract,
+};
+
+const { signature } = await ccd.signInitContract(tx, "44/919/0/0/0/0");
+```
+
+### SignUpdateContract
+
+#### Parameters-SignUpdateContract
+
+*   `tx` **IUpdateContractTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignUpdateContract
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignUpdateContract
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const updateContract = {
+  amount: CcdAmount.fromMicroCcd("1000000000000"),
+  address: {
+    index: BigInt(1234),
+    subindex: BigInt(5678)
+  },
+  receiveName: {
+    value: "Test Contract",
+  },
+  message: {
+    buffer: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+  }
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.Update,
+  payload: updateContract,
+};
+
+const { signature } = await ccd.signUpdateContract(tx, "44/919/0/0/0/0");
+```
+
+### SignPublicInfoForIp
+
+#### Parameters-SignPublicInfoForIp
+
+*   `tx` **IPublicInfoForIpTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignPublicInfoForIp
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignPublicInfoForIp
+
+```javascript
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const transactionPublicInfoForIp = {
+  idCredPub: "85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c",
+  regId: "85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c",
+  publicKeys: {
+    keys: {
+      1: {
+        schemeId: "Ed25519",
+        verifyKey: "f78929ec8a9819f6ae2e10e79522b6b311949635fecc3d924d9d1e23f8e9e1c3"
+      },
+      2: {
+        schemeId: "Ed25519",
+        verifyKey: "f78929ec8a9819f6ae2e10e79522b6b311949635fecc3d924d9d1e23f8e9e1c3"
+      }
+    },
+    threshold: 12
+  }
+};
+
+const { signature } = await ccd.signPublicInfoForIp(transactionPublicInfoForIp, "44/919/0/0/0/0");
+```
+
+### SignCredentialDeployment
+
+#### Parameters-SignCredentialDeployment
+
+*   `tx` **ICredentialDeploymentTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-SignCredentialDeployment
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-SignCredentialDeployment
+
+```javascript
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const credentialValues = {
+  credId: "85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c",
+  ipIdentity: 1234,
+  revocationThreshold: 2,
+  credentialPublicKeys: {
+    keys: {
+      1: {
+        schemeId: "Ed25519",
+        verifyKey: "f78929ec8a9819f6ae2e10e79522b6b311949635fecc3d924d9d1e23f8e9e1c3",
+      }
+    }, //Record<number, VerifyKey>,
+    threshold: 12
+  },
+  policy: {
+    validTo: "202412", // CredentialValidTo
+    createdAt: "202412", // CredentialCreatedAt
+    revealedAttributes: {
+      "sex": "30",
+      "dob": "40",
+    }, // Map.Map AttributeTag AttributeValue
+  },
+  arData: {
+    "1": {
+      encIdCredPubShare: "aca024ce6083d4956edad825c3721da9b61e5b3712606ba1465f7818a43849121bdb3e4d99624e9a74b9436cc8948d178b9b144122aa070372e3fadee4998e1cc21161186a3d19698ad245e10912810df1aaddda16a27f654716108e27758099",
+    }
+  },
+  proofs: "b8dc01d4fdd0c1b455e9a48285eac39ffc0a433929bbd29344016a2fdbd3892fabed9a607da37140ea2046aa7c924022a130cc78688e8174c4c244ea97461007b167f4c941585ff9b945eddff0f87942bf91bedc8d33355e7f3e09e4168c6ec98e3aa4b7b2e6a7807dd5cc6b057646115b82c65c97e3bc7a5898c61d99465ad655df2628d3d38cf97f7134fddfae366f80755e0dd926c54a74d05724da31c960aa5322e76a98af78e0d4ac161fd0af244a6e1068ed7661fdf0d4669c2cad41cd87641313d9ba06feb204f6c26ed208a7479daa933450a1fc293e792d6387724748a4d9403e7ff1f1deacbe41c949b06c000101a24eeaf8709e6e9930980d0a9ad6585760e8d9b58c04c6c73ce2245b70e237c86a61289dbb1cb59ff23e406a3426a92900000000000000019237d759d6dc3402310bc58ae027cbe65e4818f26fc2480a023d99a9af5403e8db6c834d6b964d42c9703959ed0121089a36989c8b92d83af2547472eeda05246837f7b3691732291a39ae7497147047000000020000000131f676f011cc5bde75b16440b051d0020070137bec8be3f167a961fbf99f647070298bc8c7f572bb3d5c8dc3b5d4c9f9750d54c85f8388e16e4bf0644c48c5666b02fec6f186c4b36994396f7023ef23c14535129c738664392d96e486eb15130000000259f75638807a180c00db02ef4dd3639132edbafc3663677494e8b1e2c51567a82e353e70c5e4c06213b09e5c528d8695cb5fd8ba97593c7ae9822f1835de801f18fce82ebf4839ca5062289eeb8ff36ded218404ccf7248008d1e72683b1138e4ab37e620b34b5793a2109e0734064ad03c5c5c14fb9920bf1f8c397b849b223000000085e17de448c17d47a4f715601fc66c5ddaea6154cd909795da984a099105af7486b2c1d617335d7a9d0d3db0c2c6a460e3680ff7b3d9d4bdc851494e90ff5101a1dc7323925c2e3f1c829199364456fc3dde9d770498b12a32d6b570c1c7221d859fe628d7e5a31711239e4d5eccc5bb7204f6e09cbfe00373e1042ac79dfbb7d4bf280fd53e8a0bac84bc6928c874ebf18905d50396083c7dd28455b68f37cf36f7b85b1027be4e1d2ccf8d2193e3436234bb4377724b0900db3e0f5c6466e2d083e97b933e49a9e0290b46b3acf81a01792954a1e1725793fb5ef4b596bd9a31c48285e3d056e79c6cd0094f8462b9e510c17d75d02639fbab819afbf1c84a55618932d52113990ef19268a2ebc0778b1b567e31a94264d6ac9cfc03867c24d50cfbf02f74dc8c9de3ac039e61ccd1865aa75d2a6f7627291fdae75c474ed3943d56c5a926eb6e6c121c550bcd4de0a0739021c50672407def5836c60d24ec762c839b6dee6cf937412ae6757d6894c8ff8dec2c0d6f3cd993e808965c84eb413d6022be0b1b1ccac25796adc0d95a2d7775e87a4d8085fa8a43f71008df77911b6f5b4ce5ee5d6f5412966ca47b20af751752fc0879fcc8a0d879acdbc8bcb00dbb93f0e10bcf36ccaf001191a4e4f47d40f59451fe4b376f2dd1d4d58854a55ed74ff2c5bb59c531e5651c99afb04318d84d936bc7ebba3823e108d7ae246157c7851016eb4bd9e74cd15af484be18b11115a2ef091e2439fce06426d4ff063dc86ffe0c5a3ea5f920fe3e8c946a5d0eacf4439f4beca8d8dc6311343f516444ef6779e3170a14b98ca26bbe516397a4f17b395178f473376a6944d0d1aba4fea8c66abaf63aef20f364c73f2c84cb3ef66f8ded751e7c8229b87f7276ba8474cced9521caafa0836e9cbb64aeaa86f20a7a38cb5353af7d642949fd59ec40100aa70e4ddbf823a5e89cb39328f7fcb2dd07b15652c3a027d5a8fc982abf950f355455937a5810cc0bb7e03b11db4bc8988b06c1467fe716a43b2ca13aa56f20bb651451fb838a93e8345a1b0f782edc37ad6b5d2719d2893e4585938f663d9df10a0bc8434b6dafd883b4c2b64b02a19b0c0d72ca2e5588e5df29963a423592917d86c372532fc65e1d2d85913c32e88466b01d5f5539079b1e2521858db1a9e9317c3ecdbed418a7caefa3da589436f619b2a617c078bf07ad753c27fb72b3731e459764264df77b1af2ca63644c2938055b0d73ceb1d8a2a50592ce06edf254709dd26f277f0af119c2e85b175070554b5e48101bdaed6df86e599f2673fae59d69eb3876c2ca7b96ae8f26428e13b45daa6b7fa5766adc5a45af6c300797e61a7c00cc186b3a0adb7ffa7f58eca72cb889c72347c1673846bdd28af281d2129934cc7347e92904422367bbc26000f70621f866f6fd5f1e9e14c65027a1179000000048415e12f31d099a3becd3c0a3304704980718faa6a2b73cad42ddbe0f0fd388c30bc668f3c70f52215bdf493ea6704b9864f06b92ccc8488090092ae5bc248ea3e20f77f59985ed062f46e8e3a2e1119fb97021fb20c432cfc8dd29a70a26b9bb80fa4e6b9c14e0299088f675e25a9f8c9192fb9bd8a672e71fb02a0275e9090f4e5fd3ea9d91daf731efcc696b24222b13931e1a82b858cd636ea690900c8e0608132bca8ec9bfa522112f8b9b3c6e790c68f9d0fd78750148dbc698e36d3f1a829a08d1dda9e66e552e282fade22759736b4677a1c23f5af0956923df8d0675adbaf6b2b7ee4e1ab4ffcb53828dcefb0a432370101feaccd66ef1cee80e2253f3a0d8024ff09d6ceef4742424a3a9f844e6854b32a5d4b66a71b3cc5c32e9cb9fe53a5959a4108090385951361357a61185398d361bab4804479a7712b07161a9b74e7760168cc70f5bbacc817ad208a7bc867a3e01f46e6832fb08ea77a4784b9e93b352a5a0d55646b099dfe7bd619625406828dc0a3d19da86c7550e44301c0decaab090bc3e146559388bcde1b4edc0fb76e152c937c4edb3c60179a8668a8baf73acda699950bf98d40dffc6d792a4702583dbc0afc34b6bb462e70f3",
+};
+
+const { signature } = await ccd.signCredentialDeployment(credentialValues, true, BigInt(1234), "44/919/0/0/0/0");
+```
+
+### signUpdateCredentials
+
+#### Parameters-signUpdateCredentials
+
+*   `tx` **IUpdateCredentialsTransaction**&#x20; - A transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-signUpdateCredentials
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-signUpdateCredentials
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo-io/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+const toAddress = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const credentialValues = {
+  credId: "85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c",
+  ipIdentity: 1234,
+  revocationThreshold: 2,
+  credentialPublicKeys: {
+    keys: {
+      1: {
+        schemeId: "Ed25519",
+        verifyKey: "f78929ec8a9819f6ae2e10e79522b6b311949635fecc3d924d9d1e23f8e9e1c3",
+      }
+    }, //Record<number, VerifyKey>,
+    threshold: 12
+  },
+  policy: {
+    validTo: "202412", // CredentialValidTo
+    createdAt: "202412", // CredentialCreatedAt
+    revealedAttributes: {
+      "sex": "30",
+      "dob": "40",
+    }, // Map.Map AttributeTag AttributeValue
+  },
+  arData: {
+    "1": {
+      encIdCredPubShare: "aca024ce6083d4956edad825c3721da9b61e5b3712606ba1465f7818a43849121bdb3e4d99624e9a74b9436cc8948d178b9b144122aa070372e3fadee4998e1cc21161186a3d19698ad245e10912810df1aaddda16a27f654716108e27758099",
+    }
+  },
+  proofs: "b8dc01d4fdd0c1b455e9a48285eac39ffc0a433929bbd29344016a2fdbd3892fabed9a607da37140ea2046aa7c924022a130cc78688e8174c4c244ea97461007b167f4c941585ff9b945eddff0f87942bf91bedc8d33355e7f3e09e4168c6ec98e3aa4b7b2e6a7807dd5cc6b057646115b82c65c97e3bc7a5898c61d99465ad655df2628d3d38cf97f7134fddfae366f80755e0dd926c54a74d05724da31c960aa5322e76a98af78e0d4ac161fd0af244a6e1068ed7661fdf0d4669c2cad41cd87641313d9ba06feb204f6c26ed208a7479daa933450a1fc293e792d6387724748a4d9403e7ff1f1deacbe41c949b06c000101a24eeaf8709e6e9930980d0a9ad6585760e8d9b58c04c6c73ce2245b70e237c86a61289dbb1cb59ff23e406a3426a92900000000000000019237d759d6dc3402310bc58ae027cbe65e4818f26fc2480a023d99a9af5403e8db6c834d6b964d42c9703959ed0121089a36989c8b92d83af2547472eeda05246837f7b3691732291a39ae7497147047000000020000000131f676f011cc5bde75b16440b051d0020070137bec8be3f167a961fbf99f647070298bc8c7f572bb3d5c8dc3b5d4c9f9750d54c85f8388e16e4bf0644c48c5666b02fec6f186c4b36994396f7023ef23c14535129c738664392d96e486eb15130000000259f75638807a180c00db02ef4dd3639132edbafc3663677494e8b1e2c51567a82e353e70c5e4c06213b09e5c528d8695cb5fd8ba97593c7ae9822f1835de801f18fce82ebf4839ca5062289eeb8ff36ded218404ccf7248008d1e72683b1138e4ab37e620b34b5793a2109e0734064ad03c5c5c14fb9920bf1f8c397b849b223000000085e17de448c17d47a4f715601fc66c5ddaea6154cd909795da984a099105af7486b2c1d617335d7a9d0d3db0c2c6a460e3680ff7b3d9d4bdc851494e90ff5101a1dc7323925c2e3f1c829199364456fc3dde9d770498b12a32d6b570c1c7221d859fe628d7e5a31711239e4d5eccc5bb7204f6e09cbfe00373e1042ac79dfbb7d4bf280fd53e8a0bac84bc6928c874ebf18905d50396083c7dd28455b68f37cf36f7b85b1027be4e1d2ccf8d2193e3436234bb4377724b0900db3e0f5c6466e2d083e97b933e49a9e0290b46b3acf81a01792954a1e1725793fb5ef4b596bd9a31c48285e3d056e79c6cd0094f8462b9e510c17d75d02639fbab819afbf1c84a55618932d52113990ef19268a2ebc0778b1b567e31a94264d6ac9cfc03867c24d50cfbf02f74dc8c9de3ac039e61ccd1865aa75d2a6f7627291fdae75c474ed3943d56c5a926eb6e6c121c550bcd4de0a0739021c50672407def5836c60d24ec762c839b6dee6cf937412ae6757d6894c8ff8dec2c0d6f3cd993e808965c84eb413d6022be0b1b1ccac25796adc0d95a2d7775e87a4d8085fa8a43f71008df77911b6f5b4ce5ee5d6f5412966ca47b20af751752fc0879fcc8a0d879acdbc8bcb00dbb93f0e10bcf36ccaf001191a4e4f47d40f59451fe4b376f2dd1d4d58854a55ed74ff2c5bb59c531e5651c99afb04318d84d936bc7ebba3823e108d7ae246157c7851016eb4bd9e74cd15af484be18b11115a2ef091e2439fce06426d4ff063dc86ffe0c5a3ea5f920fe3e8c946a5d0eacf4439f4beca8d8dc6311343f516444ef6779e3170a14b98ca26bbe516397a4f17b395178f473376a6944d0d1aba4fea8c66abaf63aef20f364c73f2c84cb3ef66f8ded751e7c8229b87f7276ba8474cced9521caafa0836e9cbb64aeaa86f20a7a38cb5353af7d642949fd59ec40100aa70e4ddbf823a5e89cb39328f7fcb2dd07b15652c3a027d5a8fc982abf950f355455937a5810cc0bb7e03b11db4bc8988b06c1467fe716a43b2ca13aa56f20bb651451fb838a93e8345a1b0f782edc37ad6b5d2719d2893e4585938f663d9df10a0bc8434b6dafd883b4c2b64b02a19b0c0d72ca2e5588e5df29963a423592917d86c372532fc65e1d2d85913c32e88466b01d5f5539079b1e2521858db1a9e9317c3ecdbed418a7caefa3da589436f619b2a617c078bf07ad753c27fb72b3731e459764264df77b1af2ca63644c2938055b0d73ceb1d8a2a50592ce06edf254709dd26f277f0af119c2e85b175070554b5e48101bdaed6df86e599f2673fae59d69eb3876c2ca7b96ae8f26428e13b45daa6b7fa5766adc5a45af6c300797e61a7c00cc186b3a0adb7ffa7f58eca72cb889c72347c1673846bdd28af281d2129934cc7347e92904422367bbc26000f70621f866f6fd5f1e9e14c65027a1179000000048415e12f31d099a3becd3c0a3304704980718faa6a2b73cad42ddbe0f0fd388c30bc668f3c70f52215bdf493ea6704b9864f06b92ccc8488090092ae5bc248ea3e20f77f59985ed062f46e8e3a2e1119fb97021fb20c432cfc8dd29a70a26b9bb80fa4e6b9c14e0299088f675e25a9f8c9192fb9bd8a672e71fb02a0275e9090f4e5fd3ea9d91daf731efcc696b24222b13931e1a82b858cd636ea690900c8e0608132bca8ec9bfa522112f8b9b3c6e790c68f9d0fd78750148dbc698e36d3f1a829a08d1dda9e66e552e282fade22759736b4677a1c23f5af0956923df8d0675adbaf6b2b7ee4e1ab4ffcb53828dcefb0a432370101feaccd66ef1cee80e2253f3a0d8024ff09d6ceef4742424a3a9f844e6854b32a5d4b66a71b3cc5c32e9cb9fe53a5959a4108090385951361357a61185398d361bab4804479a7712b07161a9b74e7760168cc70f5bbacc817ad208a7bc867a3e01f46e6832fb08ea77a4784b9e93b352a5a0d55646b099dfe7bd619625406828dc0a3d19da86c7550e44301c0decaab090bc3e146559388bcde1b4edc0fb76e152c937c4edb3c60179a8668a8baf73acda699950bf98d40dffc6d792a4702583dbc0afc34b6bb462e70f3",
+};
+
+const updateCredentials = {
+  newCredentials: [
+    {
+      index: 1,
+      cdi: credentialValues
+    },
+    {
+      index: 2,
+      cdi: credentialValues
+    }
+  ],
+  removeCredentialIds: [
+    '85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c',
+    '85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c',
+    '85d8a7aa296c162e4e2f0d6bfbdc562db240e28942f7f3ddef6979a1133b5c719ec3581869aaf88388824b0f6755e63c'
+  ],
+  threshold: 2,
+};
+
+const tx = {
+  sender,
+  nonce: nonce.toString(),
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.UpdateCredentials,
+  payload: updateCredentials,
+};
+
+const { signature } = await ccd.signUpdateCredentials(tx, "44/919/0/0/0/0");
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

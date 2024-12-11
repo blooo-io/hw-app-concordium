@@ -1,5 +1,10 @@
 import { AccountAddress, AccountTransactionType, getAccountTransactionHandler } from "@concordium/web-sdk";
 
+/**
+ * Checks if a transaction handler exists for a given transaction kind.
+ * @param transactionKind The type of account transaction.
+ * @returns True if a handler exists, false otherwise.
+ */
 export function isAccountTransactionHandlerExists(transactionKind: AccountTransactionType) {
   switch (transactionKind) {
     case AccountTransactionType.Transfer:
@@ -26,10 +31,10 @@ export function isAccountTransactionHandlerExists(transactionKind: AccountTransa
 }
 
 /**
- * Encodes a 64 bit unsigned integer to a Buffer using big endian.
- * @param value a 64 bit integer
- * @param useLittleEndian a boolean value, if not given, the value is serialized in big endian.
- * @returns big endian serialization of the input
+ * Encodes a 64-bit unsigned integer to a Buffer using big endian.
+ * @param value A 64-bit integer.
+ * @param useLittleEndian A boolean value, if not given, the value is serialized in big endian.
+ * @returns Big endian serialization of the input.
  */
 export function encodeWord64(value, useLittleEndian = false) {
   if (value > BigInt(18446744073709551615) || value < BigInt(0)) {
@@ -40,12 +45,13 @@ export function encodeWord64(value, useLittleEndian = false) {
   view.setBigUint64(0, value, useLittleEndian);
   return Buffer.from(new Uint8Array(arr));
 }
+
 /**
-* Encodes a 32 bit signed integer to a Buffer using big endian.
-* @param value a 32 bit integer
-* @param useLittleEndian a boolean value, if not given, the value is serialized in big endian.
-* @returns big endian serialization of the input
-*/
+ * Encodes a 32-bit signed integer to a Buffer using big endian.
+ * @param value A 32-bit integer.
+ * @param useLittleEndian A boolean value, if not given, the value is serialized in big endian.
+ * @returns Big endian serialization of the input.
+ */
 export function encodeInt32(value, useLittleEndian = false) {
   if (value < -2147483648 || value > 2147483647 || !Number.isInteger(value)) {
     throw new Error('The input has to be a 32 bit signed integer but it was: ' + value);
@@ -55,12 +61,13 @@ export function encodeInt32(value, useLittleEndian = false) {
   view.setInt32(0, value, useLittleEndian);
   return Buffer.from(new Int8Array(arr));
 }
+
 /**
-* Encodes a 32 bit unsigned integer to a Buffer.
-* @param value a 32 bit integer
-* @param useLittleEndian a boolean value, if not given, the value is serialized in big endian.
-* @returns big endian serialization of the input
-*/
+ * Encodes a 32-bit unsigned integer to a Buffer.
+ * @param value A 32-bit integer.
+ * @param useLittleEndian A boolean value, if not given, the value is serialized in big endian.
+ * @returns Big endian serialization of the input.
+ */
 export function encodeWord32(value, useLittleEndian = false) {
   if (value > 4294967295 || value < 0 || !Number.isInteger(value)) {
     throw new Error('The input has to be a 32 bit unsigned integer but it was: ' + value);
@@ -72,10 +79,10 @@ export function encodeWord32(value, useLittleEndian = false) {
 }
 
 /**
- * Encodes a 16 bit unsigned integer to a Buffer using big endian.
- * @param value a 16 bit integer
- * @param useLittleEndian a boolean value, if not given, the value is serialized in big endian.
- * @returns big endian serialization of the input
+ * Encodes a 16-bit unsigned integer to a Buffer using big endian.
+ * @param value A 16-bit integer.
+ * @param useLittleEndian A boolean value, if not given, the value is serialized in big endian.
+ * @returns Big endian serialization of the input.
  */
 export function encodeWord16(value, useLittleEndian = false) {
   if (value > 65535 || value < 0 || !Number.isInteger(value)) {
@@ -88,9 +95,9 @@ export function encodeWord16(value, useLittleEndian = false) {
 }
 
 /**
- * Encodes a 8 bit signed integer to a Buffer using big endian.
- * @param value a 8 bit integer
- * @returns big endian serialization of the input
+ * Encodes an 8-bit signed integer to a Buffer using big endian.
+ * @param value An 8-bit integer.
+ * @returns Big endian serialization of the input.
  */
 export function encodeInt8(value: number): Buffer {
   if (value > 127 || value < -128 || !Number.isInteger(value)) {
@@ -99,11 +106,21 @@ export function encodeInt8(value: number): Buffer {
   return Buffer.from(Buffer.of(value));
 }
 
+/**
+ * Encodes a data blob with its length as a prefix.
+ * @param blob The data blob to encode.
+ * @returns A Buffer containing the length-prefixed data blob.
+ */
 export function encodeDataBlob(blob) {
   const length = encodeWord16(blob.data.length);
   return Buffer.concat([length, blob.data]);
 }
 
+/**
+ * Serializes a schedule payload.
+ * @param payload The schedule payload to serialize.
+ * @returns A Buffer containing the serialized schedule.
+ */
 function serializeSchedule(payload: any) {
   const toAddressBuffer = AccountAddress.toBuffer(payload.toAddress);
   const scheduleLength = encodeInt8(payload.schedule.length);
@@ -116,6 +133,11 @@ function serializeSchedule(payload: any) {
   return Buffer.concat([toAddressBuffer, scheduleLength, ...bufferArray]);
 }
 
+/**
+ * Serializes a schedule and memo payload.
+ * @param payload The schedule and memo payload to serialize.
+ * @returns An object containing the serialized address and memo, and the schedule.
+ */
 function serializeScheduleAndMemo(payload: any) {
   const toAddressBuffer = AccountAddress.toBuffer(payload.toAddress);
   const scheduleLength = encodeInt8(payload.schedule.length);
@@ -132,6 +154,11 @@ function serializeScheduleAndMemo(payload: any) {
   };
 }
 
+/**
+ * Serializes a transfer with memo payload.
+ * @param payload The transfer with memo payload to serialize.
+ * @returns An object containing the serialized address and memo, and the amount.
+ */
 function serializeTransferWithMemo(payload: any) {
   const serializedToAddress = AccountAddress.toBuffer(payload.toAddress);
   const serializedMemo = encodeDataBlob(payload.memo);
@@ -143,6 +170,11 @@ function serializeTransferWithMemo(payload: any) {
   };
 }
 
+/**
+ * Serializes a transfer to public payload.
+ * @param payload The transfer to public payload to serialize.
+ * @returns A Buffer containing the serialized transfer to public data.
+ */
 function serializeTransferToPublic(payload: any) {
   const remainingAmount = Buffer.from(payload.remainingAmount, 'hex');
   const transferAmount = encodeWord64(payload.transferAmount.microCcdAmount);
@@ -153,12 +185,10 @@ function serializeTransferToPublic(payload: any) {
 }
 
 /**
- * Serialization of an account transaction header. The payload size is a part of the header,
- * but is factored out of the type as it always has to be derived from the serialized
- * transaction payload, which cannot happen until the payload has been constructed.
- * @param header the account transaction header with metadata about the transaction
- * @param payloadSize the byte size of the serialized payload
- * @returns the serialized account transaction header
+ * Serializes an account transaction header.
+ * @param accountTransaction The account transaction header with metadata about the transaction.
+ * @param payloadSize The byte size of the serialized payload.
+ * @returns The serialized account transaction header.
  */
 export const serializeAccountTransactionHeader = (accountTransaction, payloadSize) => {
   const serializedSender = AccountAddress.toBuffer(accountTransaction.sender);
@@ -176,13 +206,13 @@ export const serializeAccountTransactionHeader = (accountTransaction, payloadSiz
 }
 
 /**
-* Serializes a transaction and its signatures. This serialization when sha256 hashed
-* is considered as the transaction hash, and is used to look up the status of a
-* submitted transaction.
-* @param accountTransaction the transaction to serialize
-* @param signatures signatures on the signed digest of the transaction
-* @returns the serialization of the account transaction, which is used to calculate the transaction hash
-*/
+ * Serializes a transaction and its signatures.
+ * This serialization when sha256 hashed is considered as the transaction hash,
+ * and is used to look up the status of a submitted transaction.
+ * @param accountTransaction The transaction to serialize.
+ * @param signatures Signatures on the signed digest of the transaction.
+ * @returns The serialization of the account transaction, which is used to calculate the transaction hash.
+ */
 export const serializeAccountTransaction = (accountTransaction) => {
   const serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
   let serializedPayload;
