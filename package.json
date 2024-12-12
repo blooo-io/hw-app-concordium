@@ -27,7 +27,7 @@
     "access": "public"
   },
   "main": "lib/Concordium.js",
-  "module": "lib-es/Concordium.js",
+  "module": "lib/Concordium.js",
   "types": "lib/Concordium.d.ts",
   "license": "Apache-2.0",
   "dependencies": {
