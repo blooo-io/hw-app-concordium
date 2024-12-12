@@ -1,6 +1,6 @@
-# Concordium JavaScript SDK
+# Ledger Wallet Concordium JavaScript SDK
 
-This repository contains JavaScript bindings for interacting with the Concordium blockchain. It provides various functions to handle transactions, contracts, and credentials.
+This repository contains JavaScript bindings for interacting with the Concordium Ledger App. It provides various functions to handle transactions, contracts, and credentials.
 
 ## Installation
 
