@@ -36,7 +36,10 @@ const FINALIZATION_REWARD_COMMISSION_LENGTH = 4;
 // Deploy module constants
 const VERSION_LENGTH = 4;
 const SOURCE_LENGTH_LENGTH = 4;
-
+const AMOUNT_LENGTH = 8;
+const MODULE_REF_LENGTH = 32;
+const UPDATE_INDEX_LENGTH = 8;
+const UPDATE_SUB_INDEX_LENGTH = 8;
 // Credential and identity-related constants
 const REG_ID_LENGTH = 48;
 const IP_IDENTITY_LENGTH = 4;
@@ -441,8 +444,26 @@ export const serializeDeployModule = (txn: IDeployModuleTransaction, path: strin
  * @param {string} path - The BIP32 path as a string.
  * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
  */
-export const serializeInitContract = (txn: IInitContractTransaction, path: string): { payloads: Buffer[] } => {
-  return serializeTransaction(txn, path);
+export const serializeInitContract = (txn: IInitContractTransaction, path: string): { payloadsHeaderAndData: Buffer[], payloadsName: Buffer[], payloadsParam: Buffer[] } => {
+  const txSerialized = serializeAccountTransaction(txn);
+  let offset = 0;
+  const headerAndData = txSerialized.subarray(0, HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + MODULE_REF_LENGTH);
+  offset += HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + MODULE_REF_LENGTH;
+  const payloadsHeaderAndData = serializeTransactionPayloadsWithDerivationPath(path, headerAndData);
+
+  const nameLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
+  offset += 2*ONE_OCTET_LENGTH;
+  const name = txSerialized.subarray(offset, offset + nameLength.readUInt16BE(0));
+  offset += nameLength.readUInt16BE(0);
+  const payloadsName = serializeTransactionPayloads(Buffer.concat([nameLength, name]));
+
+  const paramLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
+  offset += 2*ONE_OCTET_LENGTH;
+  const param = txSerialized.subarray(offset, offset + paramLength.readUInt16BE(0));
+  offset += paramLength.readUInt16BE(0);
+  const payloadsParam = serializeTransactionPayloads(Buffer.concat([paramLength, param]));
+
+  return { payloadsHeaderAndData, payloadsName, payloadsParam };
 };
 
 /**
@@ -451,8 +472,26 @@ export const serializeInitContract = (txn: IInitContractTransaction, path: strin
  * @param {string} path - The BIP32 path as a string.
  * @returns {{ payloads: Buffer[] }} - An object containing serialized payloads.
  */
-export const serializeUpdateContract = (txn: IUpdateContractTransaction, path: string): { payloads: Buffer[] } => {
-  return serializeTransaction(txn, path);
+export const serializeUpdateContract = (txn: IUpdateContractTransaction, path: string): { payloadsHeaderAndData: Buffer[], payloadsName: Buffer[], payloadsParam: Buffer[] } => {
+  const txSerialized = serializeAccountTransaction(txn);
+  let offset = 0;
+  const headerAndData = txSerialized.subarray(0, HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + UPDATE_INDEX_LENGTH + UPDATE_SUB_INDEX_LENGTH);
+  offset += HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + UPDATE_INDEX_LENGTH + UPDATE_SUB_INDEX_LENGTH;
+  const payloadsHeaderAndData = serializeTransactionPayloadsWithDerivationPath(path, headerAndData);
+
+  const nameLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
+  offset += 2*ONE_OCTET_LENGTH;
+  const name = txSerialized.subarray(offset, offset + nameLength.readUInt16BE(0));
+  offset += nameLength.readUInt16BE(0);
+  const payloadsName = serializeTransactionPayloads(Buffer.concat([nameLength, name]));
+
+  const paramLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
+  offset += 2*ONE_OCTET_LENGTH;
+  const param = txSerialized.subarray(offset, offset + paramLength.readUInt16BE(0));
+  offset += paramLength.readUInt16BE(0);
+  const payloadsParam = serializeTransactionPayloads(Buffer.concat([paramLength, param]));
+
+  return { payloadsHeaderAndData, payloadsName, payloadsParam };
 };
 
 /**

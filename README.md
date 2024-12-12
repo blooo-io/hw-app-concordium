@@ -7,7 +7,7 @@ This repository contains JavaScript bindings for interacting with the Concordium
 To use this SDK, install it via npm:
 
 ```bash
-npm install @blooo-io/hw-app-concordium
+npm install @blooo/hw-app-concordium
 ```
 
 ## API
@@ -163,7 +163,7 @@ const { status } = await ccd.verifyAddress(false, 12, 12, 12);
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -204,7 +204,7 @@ const { signature } = await ccd.signTransfer(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -246,7 +246,7 @@ const { signature } = await ccd.signTransferWithMemo(txWithMemo, "44/919/0/0/0/0
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -289,7 +289,7 @@ const { signature } = await ccd.signTransferWithSchedule(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -335,7 +335,7 @@ const { signature } = await ccd.signTransferWithScheduleAndMemo(tx, "44/919/0/0/
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -380,7 +380,7 @@ const { signature } = await ccd.signConfigureDelegation(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -434,7 +434,7 @@ const configureBaker = {
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -474,7 +474,7 @@ const { signature } = await ccd.signRegisterData(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -516,7 +516,7 @@ const transferToPublic = {
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -557,7 +557,7 @@ const { signature } = await ccd.signDeployModule(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -610,7 +610,7 @@ const { signature } = await ccd.signInitContract(tx, "44/919/0/0/0/0");
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -659,7 +659,7 @@ const { signature } = await ccd.signUpdateContract(tx, "44/919/0/0/0/0");
 #### Examples-SignPublicInfoForIp
 
 ```javascript
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -700,7 +700,7 @@ const { signature } = await ccd.signPublicInfoForIp(transactionPublicInfoForIp, 
 #### Examples-SignCredentialDeployment
 
 ```javascript
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
@@ -753,7 +753,7 @@ const { signature } = await ccd.signCredentialDeployment(credentialValues, true,
 
 ```javascript
 import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
-import Concordium from "@blooo-io/hw-app-concordium";
+import Concordium from "@blooo/hw-app-concordium";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 
 const transport = await TransportWebHID.create();
