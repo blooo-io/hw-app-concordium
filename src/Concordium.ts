@@ -59,6 +59,8 @@ const P1_SCHEDULED_TRANSFER_PAIRS = 0x01;
 
 // Deploy Module
 const P1_SOURCE = 0x01;
+const P1_NAME = 0x01;
+const P1_PARAM = 0x02;
 
 // Update Credentials
 const P2_CREDENTIAL_INITIAL = 0x00;
@@ -87,6 +89,9 @@ const INS = {
   SIGN_TRANSFER_SCHEDULE: 0x03,
   SIGN_CREDENTIAL_DEPLOYMENT: 0x04,
   EXPORT_PRIVATE_KEY: 0x05,
+  SIGN_DEPLOY_MODULE: 0x06,
+  SIGN_INIT_CONTRACT: 0x07,
+  SIGN_UPDATE_CONTRACT: 0x08,
   SIGN_TRANSFER_TO_PUBLIC: 0x12,
   SIGN_CONFIGURE_DELEGATION: 0x17,
   SIGN_CONFIGURE_BAKER: 0x18,
@@ -96,9 +101,6 @@ const INS = {
   SIGN_TRANSFER_MEMO: 0x32,
   SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x34,
   SIGN_REGISTER_DATA: 0x35,
-  SIGN_DEPLOY_MODULE: 0x06,
-  SIGN_INIT_CONTRACT: 0x06,
-  SIGN_UPDATE_CONTRACT: 0x06,
 };
 
 /**
@@ -108,7 +110,7 @@ const INS = {
  * @param scrambleKey a scramble key
  *
  * @example
- * import Concordium from "@blooo-io/hw-app-concordium";
+ * import Concordium from "@blooo/hw-app-concordium";
  * const Concordium = new Concordium(transport);
  */
 export default class Concordium {
@@ -614,17 +616,31 @@ export default class Concordium {
    */
   async signInitContract(txn: IInitContractTransaction, path: string): Promise<{ signature: string[] }> {
 
-    const { payloads } = serializeInitContract(txn, path);
+    const { payloadsHeaderAndData, payloadsName, payloadsParam } = serializeInitContract(txn, path);
 
     let response;
+    await this.sendToDevice(
+      INS.SIGN_INIT_CONTRACT,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadsHeaderAndData[0]
+    );
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
+    for (const nameChunk of payloadsName) {
+      await this.sendToDevice(
+        INS.SIGN_INIT_CONTRACT,
+        P1_NAME,
+        NONE,
+        nameChunk
+      );
+    }
+
+    for (const paramChunk of payloadsParam) {
       response = await this.sendToDevice(
         INS.SIGN_INIT_CONTRACT,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
+        P1_PARAM,
+        NONE,
+        paramChunk
       );
     }
 
@@ -644,17 +660,31 @@ export default class Concordium {
    */
   async signUpdateContract(txn: IUpdateContractTransaction, path: string): Promise<{ signature: string[] }> {
 
-    const { payloads } = serializeUpdateContract(txn, path);
+    const { payloadsHeaderAndData, payloadsName, payloadsParam } = serializeUpdateContract(txn, path);
 
     let response;
+    await this.sendToDevice(
+      INS.SIGN_UPDATE_CONTRACT,
+      P1_INITIAL_PACKET,
+      NONE,
+      payloadsHeaderAndData[0]
+    );
 
-    for (let i = 0; i < payloads.length; i++) {
-      const lastChunk = i === payloads.length - 1;
+    for (const nameChunk of payloadsName) {
+      await this.sendToDevice(
+        INS.SIGN_UPDATE_CONTRACT,
+        P1_NAME,
+        NONE,
+        nameChunk
+      );
+    }
+
+    for (const paramChunk of payloadsParam) {
       response = await this.sendToDevice(
         INS.SIGN_UPDATE_CONTRACT,
-        P1_FIRST_CHUNK + i,
-        lastChunk ? P2_LAST : P2_MORE,
-        payloads[i]
+        P1_PARAM,
+        NONE,
+        paramChunk
       );
     }
 
