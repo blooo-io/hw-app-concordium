@@ -47,6 +47,22 @@ npm install @blooo/hw-app-concordium
             *   [Parameters](#parameters-signtransferwithscheduleandmemo)
             *   [Return](#return-signtransferwithscheduleandmemo)
             *   [Examples](#examples-signtransferwithscheduleandmemo)
+        *   [signConfigureDelegation](#signConfigureDelegation)
+            *   [Parameters](#parameters-signConfigureDelegation)
+            *   [Return](#return-signConfigureDelegation)
+            *   [Examples](#examples-signConfigureDelegation)
+        *   [signConfigureBaker](#signConfigureBaker)
+            *   [Parameters](#parameters-signConfigureBaker)
+            *   [Return](#return-signConfigureBaker)
+            *   [Examples](#examples-signConfigureBaker)
+        *   [signRegisterData](#SignRegisterData)
+            *   [Parameters](#parameters-SignRegisterData)
+            *   [Return](#return-SignRegisterData)
+            *   [Examples](#examples-SignRegisterData)
+        *   [signTransferToPublic](#SignTransferToPublic)
+            *   [Parameters](#parameters-SignTransferToPublic)
+            *   [Return](#return-SignTransferToPublic)
+            *   [Examples](#examples-SignTransferToPublic)
         *   [signDeployModule](#signdeploymodule)
             *   [Parameters](#parameters-signdeploymodule)
             *   [Return](#return-signdeploymodule)
@@ -320,7 +336,7 @@ const tx = {
 const { signature } = await ccd.signTransferWithScheduleAndMemo(tx, "44/919/0/0/0/0");
 ```
 
-### SignConfigureDelegation
+### signConfigureDelegation
 
 #### Parameters-SignConfigureDelegation
 
@@ -365,7 +381,7 @@ const tx = {
 const { signature } = await ccd.signConfigureDelegation(tx, "44/919/0/0/0/0");
 ```
 
-### SignConfigureBaker
+### signConfigureBaker
 
 #### Parameters-SignConfigureBaker
 
@@ -405,6 +421,7 @@ const configureBaker = {
     transactionFeeCommission: 10,
     bakingRewardCommission: 10,
     finalizationRewardCommission: 10,
+    suspended: true
   };
 
   const tx = {

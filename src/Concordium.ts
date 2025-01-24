@@ -42,6 +42,7 @@ const P1_AGGREGATION_KEY = 0x02;
 const P1_URL_LENGTH = 0x03;
 const P1_URL = 0x04;
 const P1_COMMISSION_FEE = 0x05;
+const P1_SUSPENDED = 0x06;
 
 const P1_FIRST_CHUNK = 0x00;
 const P1_INITIAL_WITH_MEMO = 0x01;
@@ -448,7 +449,7 @@ export default class Concordium {
    */
   async signConfigureBaker(txn: IConfigureBakerTransaction, path: string): Promise<{ signature: string[] }> {
 
-    const { payloadHeaderKindAndBitmap, payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee } = serializeConfigureBaker(txn, path);
+    const { payloadHeaderKindAndBitmap, payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee, payloadSuspended } = serializeConfigureBaker(txn, path);
 
     let response;
 
@@ -482,11 +483,17 @@ export default class Concordium {
       NONE,
       payloadURL
     );
-    response = await this.sendToDevice(
+    await this.sendToDevice(
       INS.SIGN_CONFIGURE_BAKER,
       P1_COMMISSION_FEE,
       NONE,
       payloadCommissionFee
+    );
+    response = await this.sendToDevice(
+      INS.SIGN_CONFIGURE_BAKER,
+      P1_SUSPENDED,
+      NONE,
+      payloadSuspended
     );
 
     if (response.length === 1) throw new Error("User has declined.");
