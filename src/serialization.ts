@@ -20,6 +20,7 @@ const BITMAP_LENGTH = 2;
 const STAKING_PAYLOAD_LENGTH = 8;
 const RESTAKE_EARNINGS_PAYLOAD_LENGTH = 1;
 const OPEN_FOR_DELEGATION_PAYLOAD_LENGTH = 1;
+const SUSPENDED_LENGTH = 1;
 
 // Key-related constants
 const KEYS_AGGREGATION_LENGTH = 160;
@@ -268,7 +269,7 @@ export const serializeConfigureDelegation = (txn: IConfigureDelegationTransactio
  * @param {string} path - The BIP32 path as a string.
  * @returns {{ payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer }} - An object containing serialized payloads.
  */
-export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: string): { payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer } => {
+export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: string): { payloadHeaderKindAndBitmap: Buffer, payloadFirstBatch: Buffer, payloadAggregationKeys: Buffer, payloadUrlLength: Buffer, payloadURL: Buffer, payloadCommissionFee: Buffer, payloadSuspended: Buffer } => {
   let stake: Buffer = Buffer.alloc(0);
   let restakeEarnings: Buffer = Buffer.alloc(0);
   let openForDelegation: Buffer = Buffer.alloc(0);
@@ -278,6 +279,7 @@ export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: s
   let transactionFeeCommission: Buffer = Buffer.alloc(0);
   let bakingRewardCommission: Buffer = Buffer.alloc(0);
   let finalizationRewardCommission: Buffer = Buffer.alloc(0);
+  let suspended: Buffer = Buffer.alloc(0);
   let offset: number = 0;
 
   const txSerialized = serializeAccountTransaction(txn);
@@ -316,6 +318,9 @@ export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: s
   if (txn.payload.hasOwnProperty('finalizationRewardCommission')) {
     finalizationRewardCommission = txSerialized.subarray(offset, offset + FINALIZATION_REWARD_COMMISSION_LENGTH);
   }
+  if (txn.payload.hasOwnProperty('suspended')) {
+    suspended = txSerialized.subarray(offset, offset + SUSPENDED_LENGTH);
+  }
 
   const payloadHeaderKindAndBitmap = serializeTransactionPayloadsWithDerivationPath(path, headerKindAndBitmap);
   const payloadFirstBatch = Buffer.concat([stake, restakeEarnings, openForDelegation, keys.subarray(0, KEYS_ELECTION_AND_SIGNATURE_LENGTH)]);
@@ -323,8 +328,9 @@ export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: s
   const payloadUrlLength = metadataUrl;
   const payloadURL = url;
   const payloadCommissionFee = Buffer.concat([transactionFeeCommission, bakingRewardCommission, finalizationRewardCommission]);
+  const payloadSuspended = suspended;
 
-  return { payloadHeaderKindAndBitmap: payloadHeaderKindAndBitmap[0], payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee };
+  return { payloadHeaderKindAndBitmap: payloadHeaderKindAndBitmap[0], payloadFirstBatch, payloadAggregationKeys, payloadUrlLength, payloadURL, payloadCommissionFee, payloadSuspended };
 };
 
 /**
