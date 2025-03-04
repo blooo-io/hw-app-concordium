@@ -547,7 +547,7 @@ export default class Concordium {
    */
   async signTransferToPublic(txn: ITransferToPublicTransaction, path: string): Promise<{ signature: string[] }> {
 
-    const { payloadHeader, payloadsAmountAndProofsLength, payloadsProofs } = serializeTransferToPublic(txn, path);
+    const { payloadHeader, payloadsAmountRecipientAndProofsLength, payloadsProofs } = serializeTransferToPublic(txn, path);
 
     let response;
 
@@ -562,7 +562,7 @@ export default class Concordium {
       INS.SIGN_TRANSFER_TO_PUBLIC,
       P1_REMAINING_AMOUNT,
       NONE,
-      payloadsAmountAndProofsLength[0]
+      payloadsAmountRecipientAndProofsLength[0]
     );
 
     for (const proof of payloadsProofs) {

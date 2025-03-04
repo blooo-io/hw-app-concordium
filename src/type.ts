@@ -110,6 +110,7 @@ export interface IRegisterDataTransaction {
 export interface ITransferToPublic {
   remainingAmount: Hex,
   transferAmount: CcdAmount,
+  recipient: AccountAddress.Type,
   index: string,
   proofs: Hex,
 }
