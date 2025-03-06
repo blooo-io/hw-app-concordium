@@ -409,9 +409,10 @@ export const serializeRegisterData = (txn: IRegisterDataTransaction, path: strin
  * @param {string} path - The BIP32 path as a string.
  * @returns {{ payloadHeader: Buffer[], payloadsAmountAndProofsLength: Buffer[], payloadsProofs: Buffer[] }} - An object containing serialized payloads.
  */
-export const serializeTransferToPublic = (txn: ITransferToPublicTransaction, path: string): { payloadHeader: Buffer[], payloadsAmountAndProofsLength: Buffer[], payloadsProofs: Buffer[] } => {
+export const serializeTransferToPublic = (txn: ITransferToPublicTransaction, path: string): { payloadHeader: Buffer[], payloadsAmountRecipientAndProofsLength: Buffer[], payloadsProofs: Buffer[] } => {
   const remainingAmount = Buffer.from(txn.payload.remainingAmount, 'hex');
   const transferAmount = encodeWord64(txn.payload.transferAmount.microCcdAmount);
+  const recipient = AccountAddress.toBuffer(txn.payload.recipient);
   const index = encodeWord64(txn.payload.index);
   const proofs = Buffer.from(txn.payload.proofs, 'hex');
   const proofsLength = encodeWord16(proofs.length);
@@ -420,13 +421,13 @@ export const serializeTransferToPublic = (txn: ITransferToPublicTransaction, pat
   const payloadSize = remainingAmount.length + transferAmount.length + index.length + proofsLength.length + proofs.length + serializedType.length;
   const serializedHeader = serializeAccountTransactionHeader(txn, payloadSize);
   const serializedHeaderAndKind = Buffer.concat([serializedHeader, serializedType]);
-  const serializedAmountAndProofsLength = Buffer.concat([remainingAmount, transferAmount, index, proofsLength]);
+  const serializedAmountRecipientAndProofsLength = Buffer.concat([remainingAmount, transferAmount, recipient, index, proofsLength]);
 
   const payloadHeader = serializeTransactionPayloadsWithDerivationPath(path, serializedHeaderAndKind);
-  const payloadsAmountAndProofsLength = serializeTransactionPayloads(serializedAmountAndProofsLength);
+  const payloadsAmountRecipientAndProofsLength = serializeTransactionPayloads(serializedAmountRecipientAndProofsLength);
   const payloadsProofs = serializeTransactionPayloads(proofs);
 
-  return { payloadHeader, payloadsAmountAndProofsLength, payloadsProofs };
+  return { payloadHeader, payloadsAmountRecipientAndProofsLength, payloadsProofs };
 };
 
 /**
