@@ -23,10 +23,14 @@ npm install @blooo/hw-app-concordium
             *   [Parameters](#parameters-getpublickey)
             *   [Return](#return-getpublickey)
             *   [Examples](#examples-getpublickey)
-        *   [exportPrivateKey](#exportprivatekey)
-            *   [Parameters](#parameters-exportprivatekey)
-            *   [Return](#return-exportprivatekey)
-            *   [Examples](#examples-exportprivatekey)
+        *   [exportPrivateKeyLegacy](#exportprivatekeylegacy)
+            *   [Parameters](#parameters-exportprivatekeylegacy)
+            *   [Return](#return-exportprivatekeylegacy)
+            *   [Examples](#examples-exportprivatekeylegacy)
+        *   [exportPrivateKeyNew](#exportprivatekeynew)
+            *   [Parameters](#parameters-exportprivatekeynew)
+            *   [Return](#return-exportprivatekeynew)
+            *   [Examples](#examples-exportprivatekeynew)
         *   [verifyAddress](#verifyaddress)
             *   [Parameters](#parameters-verifyaddress)
             *   [Return](#return-verifyaddress)
@@ -121,26 +125,46 @@ Or
 const { publicKey, signedPublicKey } = await ccd.getPublicKey("44/919/0/0/0/0", true, true);
 ```
 
-### ExportPrivateKey
+### ExportPrivateKeyLegacy
 
-#### Parameters-ExportPrivateKey
+#### Parameters-ExportPrivateKeyLegacy
 
 *   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key.
 *   `exportType` **ExportType**&#x20; - The type of export, either PRF_KEY_SEED or PRF_KEY.
 *   `mode` **Mode**&#x20; - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
-*   `isLegacy` **boolean**&#x20; - Flag to indicate if the legacy mode is used.
 
-#### Return-ExportPrivateKey
+#### Return-ExportPrivateKeyLegacy
 
 *   `privateKey` **string**&#x20; - The private key.
 *   `credentialId` **string**&#x20; - Only if mode is EXPORT_CRED_ID. The credential ID.
 
-#### Examples-ExportPrivateKey
+#### Examples-ExportPrivateKeyLegacy
 
 ```javascript
-const { privateKey } = await ccd.exportPrivateKey(data, exportType, mode, isLegacy);
+const { privateKey } = await ccd.exportPrivateKeyLegacy(data, exportType, mode);
 Or
-const { privateKey, credentialId } = await ccd.exportPrivateKey(data, exportType, mode, isLegacy);
+const { privateKey, credentialId } = await ccd.exportPrivateKeyLegacy(data, exportType, mode);
+```
+
+### ExportPrivateKeyNew
+
+#### Parameters-ExportPrivateKeyNew
+
+*   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key.
+*   `exportType` **ExportType**&#x20; - The type of export, either PRF_KEY_SEED or PRF_KEY.
+*   `mode` **Mode**&#x20; - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+
+#### Return-ExportPrivateKeyNew
+
+*   `privateKey` **string**&#x20; - The private key.
+*   `credentialId` **string**&#x20; - Only if mode is EXPORT_CRED_ID. The credential ID.
+
+#### Examples-ExportPrivateKeyNew
+
+```javascript
+const { privateKey } = await ccd.exportPrivateKeyNew(data, exportType, mode);
+Or
+const { privateKey, credentialId } = await ccd.exportPrivateKeyNew(data, exportType, mode);
 ```
 
 ### VerifyAddress

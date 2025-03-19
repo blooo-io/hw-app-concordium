@@ -89,7 +89,7 @@ const INS = {
   SIGN_TRANSFER: 0x02,
   SIGN_TRANSFER_SCHEDULE: 0x03,
   SIGN_CREDENTIAL_DEPLOYMENT: 0x04,
-  EXPORT_PRIVATE_KEY: 0x05,
+  EXPORT_PRIVATE_KEY_LEGACY: 0x05,
   SIGN_DEPLOY_MODULE: 0x06,
   SIGN_INIT_CONTRACT: 0x07,
   SIGN_UPDATE_CONTRACT: 0x08,
@@ -102,6 +102,7 @@ const INS = {
   SIGN_TRANSFER_MEMO: 0x32,
   SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x34,
   SIGN_REGISTER_DATA: 0x35,
+  EXPORT_PRIVATE_KEY_NEW: 0x37,
 };
 
 /**
@@ -224,22 +225,46 @@ export default class Concordium {
    * @param data - The data required for exporting the private key.
    * @param exportType - The type of export, either PRF_KEY_SEED or PRF_KEY.
    * @param mode - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
-   * @param isLegacy - Flag to indicate if the legacy mode is used.
    * @returns A promise that resolves to an object with the private key and optionally the credential ID.
    */
-  async exportPrivateKey(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode, isLegacy: boolean): Promise<{ privateKey: string, credentialId?: string }> {
-    let payload = Buffer.alloc(0);
-    const isLegacyEncoded = isLegacy ? encodeInt8(0) : encodeInt8(1);
+  async exportPrivateKeyLegacy(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode): Promise<{ privateKey: string, credentialId?: string }> {
     const identityEncoded = encodeInt32(data.identity);
-    payload = Buffer.concat([payload, isLegacyEncoded, identityEncoded]);
-
-    if (!isLegacy) {
-      const identityProviderEncoded = encodeInt32(data.identityProvider);
-      payload = Buffer.concat([payload, identityProviderEncoded]);
-    }
+    const payload = Buffer.from(identityEncoded);
 
     const exportedPrivateKey = await this.sendToDevice(
-      INS.EXPORT_PRIVATE_KEY,
+      INS.EXPORT_PRIVATE_KEY_LEGACY,
+      mode,
+      exportType,
+      payload
+    );
+
+    if (mode === Mode.EXPORT_CRED_ID) {
+      return {
+        privateKey: exportedPrivateKey.subarray(0, PRIVATE_KEY_LENGTH).toString("hex"),
+        credentialId: exportedPrivateKey.subarray(PRIVATE_KEY_LENGTH).toString("hex"),
+      };
+    }
+
+    return {
+      privateKey: exportedPrivateKey.toString("hex"),
+    };
+  }
+
+  /**
+   * Export a private key.
+   *
+   * @param data - The data required for exporting the private key.
+   * @param exportType - The type of export, either PRF_KEY_SEED or PRF_KEY.
+   * @param mode - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+   * @returns A promise that resolves to an object with the private key and optionally the credential ID.
+   */
+  async exportPrivateKeyNew(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode): Promise<{ privateKey: string, credentialId?: string }> {
+    const identityEncoded = encodeInt32(data.identity);
+    const identityProviderEncoded = encodeInt32(data.identityProvider);
+    const payload = Buffer.concat([identityEncoded, identityProviderEncoded]);
+
+    const exportedPrivateKey = await this.sendToDevice(
+      INS.EXPORT_PRIVATE_KEY_NEW,
       mode,
       exportType,
       payload
