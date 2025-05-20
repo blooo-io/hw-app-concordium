@@ -23,6 +23,7 @@ import { Mode, ExportType, IExportPrivateKeyData, ISimpleTransferTransaction, IS
 
 
 const PRIVATE_KEY_LENGTH = 32;
+const PUBLIC_KEY_LENGTH = 32;
 
 const LEDGER_CLA = 0xe0;
 const NONE = 0x00;
@@ -205,17 +206,15 @@ export default class Concordium {
       pathBuffer
     );
 
-    const publicKeyLength: number = publicKeyBuffer[0];
-
     if (signedKey) {
       return {
-        publicKey: publicKeyBuffer.subarray(1, 1 + publicKeyLength).toString("hex"),
-        signedPublicKey: publicKeyBuffer.subarray(1 + publicKeyLength).toString("hex"),
+        publicKey: publicKeyBuffer.subarray(0, PUBLIC_KEY_LENGTH).toString("hex"),
+        signedPublicKey: publicKeyBuffer.subarray(PUBLIC_KEY_LENGTH).toString("hex"),
       };
     }
 
     return {
-      publicKey: publicKeyBuffer.subarray(1, 1 + publicKeyLength).toString("hex"),
+      publicKey: publicKeyBuffer.subarray(0, PUBLIC_KEY_LENGTH).toString("hex"),
     };
   }
 
