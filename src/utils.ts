@@ -1,4 +1,5 @@
 import { AccountAddress, AccountTransactionType, getAccountTransactionHandler } from "@concordium/web-sdk";
+import { IPLTPayload } from "./type";
 
 /**
  * Checks if a transaction handler exists for a given transaction kind.
@@ -184,6 +185,7 @@ function serializeTransferToPublic(payload: any) {
   return Buffer.concat([remainingAmount, transferAmount, index, proofsLength, proofs]);
 }
 
+
 /**
  * Serializes an account transaction header.
  * @param accountTransaction The account transaction header with metadata about the transaction.
@@ -214,20 +216,27 @@ export const serializeAccountTransactionHeader = (accountTransaction, payloadSiz
  * @returns The serialization of the account transaction, which is used to calculate the transaction hash.
  */
 export const serializeAccountTransaction = (accountTransaction) => {
-  const serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
-  let serializedPayload;
+  let serializedType: Buffer;
+  let serializedPayload: Buffer;
 
+  serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
+  
   if (isAccountTransactionHandlerExists(accountTransaction.transactionKind) && accountTransaction.transactionKind !== AccountTransactionType.TransferWithMemo) {
     const accountTransactionHandler = getAccountTransactionHandler(accountTransaction.transactionKind);
-    serializedPayload = accountTransactionHandler.serialize(accountTransaction.payload);
+    serializedPayload = Buffer.from(accountTransactionHandler.serialize(accountTransaction.payload));
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithSchedule) {
     serializedPayload = serializeSchedule(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithScheduleAndMemo) {
-    serializedPayload = serializeScheduleAndMemo(accountTransaction.payload);
+    const scheduleAndMemoResult = serializeScheduleAndMemo(accountTransaction.payload);
+    serializedPayload = Buffer.concat([scheduleAndMemoResult.addressAndMemo, scheduleAndMemoResult.schedule]);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferToPublic) {
     serializedPayload = serializeTransferToPublic(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithMemo) {
-    serializedPayload = serializeTransferWithMemo(accountTransaction.payload);
+    const transferWithMemoResult = serializeTransferWithMemo(accountTransaction.payload);
+    serializedPayload = Buffer.concat([transferWithMemoResult.addressAndMemo, transferWithMemoResult.amount]);
+  } else {
+    // Fallback for unknown transaction types
+    throw new Error(`Unsupported transaction type: ${accountTransaction.transactionKind}`);
   }
 
   const serializedHeader = serializeAccountTransactionHeader(accountTransaction, serializedPayload.length + 1);
