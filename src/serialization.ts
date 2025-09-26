@@ -1,11 +1,11 @@
 import BIPPath from "bip32-path";
-import { encodeDataBlob, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader } from "./utils";
+import { encodeDataBlob, encodeInt32, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader } from "./utils";
 import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
 import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountAddress } from "@concordium/web-sdk";
 import { serializeCredentialDeploymentInfo } from "@concordium/common-sdk/lib/serialization";
 import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/common-sdk/lib/serializationHelpers";
-import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction } from "./type";
+import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction, IPLTPayload, IPLTTransaction } from "./type";
 
 // Transaction-related constants
 const MAX_CHUNK_SIZE = 255;
@@ -107,7 +107,6 @@ export const pathToBuffer = (originalPath: string): Buffer => {
  * @returns {Buffer[]} - An array of serialized payload buffers.
  */
 export const serializeTransactionPayloadsWithDerivationPath = (path: string, rawTx: Buffer): Buffer[] => {
-  console.log('path:', path, 'typeof path:', typeof path);
   const paths = splitPath(path);
   let offset = 0;
   const payloads: Buffer[] = [];
@@ -178,6 +177,33 @@ export const serializeTransaction = (txn: AccountTransaction, path: string): { p
   const payloads = serializeTransactionPayloadsWithDerivationPath(path, txSerialized);
   return { payloads };
 }
+
+ /**
+ * Serializes a PLT transaction.
+ * @param txn The PLT transaction to serialize.
+ * @param path The BIP32 path as a string.
+ * @returns An object containing serialized payloads.
+ */
+export const serializePltTransaction = (txn: IPLTTransaction, path: string): Buffer[] => {
+  const tokenName: string = txn.payload.tokenName as string;
+  const tokenNameBuffer = NodeBuffer.from(tokenName, 'utf-8');
+  txn.payload.tokenName = new DataBlob(tokenNameBuffer);
+  const serializedTokenName = encodeDataBlob(txn.payload.tokenName).subarray(1);
+  
+  const operationsBuffer = Buffer.from(txn.payload.operations, 'hex');
+  const operationsLength = encodeInt32(operationsBuffer.length);
+
+  const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
+
+  const payloadSize = serializedType.length + operationsBuffer.length + serializedTokenName.length;
+  
+  const serializedHeader = serializeAccountTransactionHeader(txn, payloadSize);
+
+  const serializedTransaction = Buffer.concat([serializedHeader, serializedType, serializedTokenName, operationsLength, operationsBuffer]);
+
+  const payload = serializeTransactionPayloadsWithDerivationPath(path, serializedTransaction);
+  return payload;
+};
 
 /**
  * Serializes a simple transfer transaction.

@@ -1,6 +1,5 @@
-import { AccountTransactionType } from "@concordium/web-sdk";
+import { AccountTransactionType, AccountAddress } from "@concordium/web-sdk";
 import { AttributeKey, CcdAmount, ConfigureBakerPayload, ConfigureDelegationPayload, DataBlob, DeployModulePayload, InitContractPayload, UpdateContractPayload } from "@concordium/common-sdk";
-import { AccountAddress } from "@concordium/web-sdk";
 
 export enum ExportType {
   PRF_KEY_SEED = 1,
@@ -226,7 +225,7 @@ export interface IPublicInfoForIpTransaction {
 }
 
 export interface IPLTPayload {
-  tokenId: string;
+  tokenName: string | DataBlob,
   operations: Hex;
 }
 
@@ -235,7 +234,7 @@ export interface IPLTTransaction {
   nonce: string,
   expiry: BigInt,
   energyAmount: string,
-  transactionKind: AccountTransactionType.TokenUpdate,
+  transactionKind: AccountTransactionType,
   payload: IPLTPayload,
 }
 
