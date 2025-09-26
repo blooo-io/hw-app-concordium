@@ -106,7 +106,8 @@ export const pathToBuffer = (originalPath: string): Buffer => {
  * @param {Buffer} rawTx - The raw transaction data.
  * @returns {Buffer[]} - An array of serialized payload buffers.
  */
-const serializeTransactionPayloadsWithDerivationPath = (path: string, rawTx: Buffer): Buffer[] => {
+export const serializeTransactionPayloadsWithDerivationPath = (path: string, rawTx: Buffer): Buffer[] => {
+  console.log('path:', path, 'typeof path:', typeof path);
   const paths = splitPath(path);
   let offset = 0;
   const payloads: Buffer[] = [];

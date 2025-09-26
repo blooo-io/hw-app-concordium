@@ -1,4 +1,7 @@
 import { AccountAddress, AccountTransactionType, getAccountTransactionHandler } from "@concordium/web-sdk";
+import { IPLTPayload } from "./type";
+import * as TokenId from "@concordium/web-sdk/lib/esm/plt/TokenId";
+import * as Cbor from "@concordium/web-sdk/lib/esm/plt/Cbor";
 
 /**
  * Checks if a transaction handler exists for a given transaction kind.
@@ -24,6 +27,8 @@ export function isAccountTransactionHandlerExists(transactionKind: AccountTransa
     case AccountTransactionType.ConfigureDelegation:
       return true;
     case AccountTransactionType.ConfigureBaker:
+      return true;
+    case AccountTransactionType.TokenUpdate:
       return true;
     default:
       return false;
@@ -185,6 +190,29 @@ function serializeTransferToPublic(payload: any) {
 }
 
 /**
+ * Serializes PLT payload data.
+ * @param payload The PLT payload to serialize.
+ * @returns Buffer containing the serialized PLT payload.
+ */
+export const serializePLTPayload = (payload: IPLTPayload): Buffer => {
+  // Convert custom payload to official format for serialization
+  const tokenId = TokenId.fromString(payload.tokenId);
+  const operations = Cbor.fromHexString(payload.operations);
+  
+  // Serialize tokenId using the official toBytes function
+  const tokenIdBytes = TokenId.toBytes(tokenId);
+  const tokenIdBuffer = Buffer.from(tokenIdBytes);
+  
+  // Serialize operations using CBOR toBuffer function
+  const operationsBytes = Cbor.toBuffer(operations);
+  const operationsBuffer = Buffer.from(operationsBytes);
+  
+  return Buffer.concat([
+    tokenIdBuffer,
+    operationsBuffer
+  ]);
+};
+/**
  * Serializes an account transaction header.
  * @param accountTransaction The account transaction header with metadata about the transaction.
  * @param payloadSize The byte size of the serialized payload.
@@ -214,20 +242,31 @@ export const serializeAccountTransactionHeader = (accountTransaction, payloadSiz
  * @returns The serialization of the account transaction, which is used to calculate the transaction hash.
  */
 export const serializeAccountTransaction = (accountTransaction) => {
-  const serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
-  let serializedPayload;
+  let serializedType: Buffer;
+  let serializedPayload: Buffer;
 
+  serializedType = Buffer.from(Uint8Array.of(accountTransaction.transactionKind));
+  
+  // Check if there's an official handler for this transaction type
   if (isAccountTransactionHandlerExists(accountTransaction.transactionKind) && accountTransaction.transactionKind !== AccountTransactionType.TransferWithMemo) {
     const accountTransactionHandler = getAccountTransactionHandler(accountTransaction.transactionKind);
-    serializedPayload = accountTransactionHandler.serialize(accountTransaction.payload);
+    serializedPayload = Buffer.from(accountTransactionHandler.serialize(accountTransaction.payload));
+  } else if (accountTransaction.transactionKind === AccountTransactionType.TokenUpdate) {
+    // Handle TokenUpdate (PLT) transactions with custom serialization if no official handler
+    serializedPayload = serializePLTPayload(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithSchedule) {
     serializedPayload = serializeSchedule(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithScheduleAndMemo) {
-    serializedPayload = serializeScheduleAndMemo(accountTransaction.payload);
+    const scheduleAndMemoResult = serializeScheduleAndMemo(accountTransaction.payload);
+    serializedPayload = Buffer.concat([scheduleAndMemoResult.addressAndMemo, scheduleAndMemoResult.schedule]);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferToPublic) {
     serializedPayload = serializeTransferToPublic(accountTransaction.payload);
   } else if (accountTransaction.transactionKind === AccountTransactionType.TransferWithMemo) {
-    serializedPayload = serializeTransferWithMemo(accountTransaction.payload);
+    const transferWithMemoResult = serializeTransferWithMemo(accountTransaction.payload);
+    serializedPayload = Buffer.concat([transferWithMemoResult.addressAndMemo, transferWithMemoResult.amount]);
+  } else {
+    // Fallback for unknown transaction types
+    throw new Error(`Unsupported transaction type: ${accountTransaction.transactionKind}`);
   }
 
   const serializedHeader = serializeAccountTransactionHeader(accountTransaction, serializedPayload.length + 1);

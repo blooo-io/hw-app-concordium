@@ -16,12 +16,15 @@ import {
   serializeTransactionPayloads,
   serializeUpdateCredentials,
   serializeCredentialDeployment,
-  serializePublicInfoForIp
+  serializePublicInfoForIp,
+  serializeTransaction
 } from "./serialization";
 import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
-import { Mode, ExportType, IExportPrivateKeyData, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleTransaction, ISimpleTransferWithScheduleAndMemoTransaction, IConfigureDelegationTransaction, IRegisterDataTransaction, ITransferToPublicTransaction, IDeployModuleTransaction, IInitContractTransaction, IUpdateContractTransaction, IPublicInfoForIpTransaction, ICredentialDeploymentTransaction, IUpdateCredentialsTransaction, IConfigureBakerTransaction } from "./type";
+import { Mode, ExportType, ExportTypeNew, IExportPrivateKeyData, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleTransaction, ISimpleTransferWithScheduleAndMemoTransaction, IConfigureDelegationTransaction, IRegisterDataTransaction, ITransferToPublicTransaction, IDeployModuleTransaction, IInitContractTransaction, IUpdateContractTransaction, IPublicInfoForIpTransaction, ICredentialDeploymentTransaction, IUpdateCredentialsTransaction, IConfigureBakerTransaction, AccountTransaction, IPLTTransaction, IPLTPayload } from "./type";
+import { AccountTransactionType } from "@concordium/web-sdk";
 
-
+export { ExportType };
+export type { IPLTTransaction, IPLTPayload };
 const PRIVATE_KEY_LENGTH = 32;
 const PUBLIC_KEY_LENGTH = 32;
 
@@ -84,6 +87,13 @@ const P1_LENGTH_OF_PROOFS = 0x07;
 const P1_PROOFS = 0x08;
 const P1_NEW_OR_EXISTING = 0x09
 
+// FOR EXPORT PRIVATE KEY NEW
+const P1_IDENTITY_CREDENTIAL_CREATION = 0x00;
+const P1_ACCOUNT_CREATION = 0x01;
+const P1_ID_RECOVERY = 0x02;
+const P1_ACCOUNT_CREDENTIAL_DISCOVERY = 0x03;
+const P1_CREATION_OF_ZK_PROOF = 0x04;
+
 const INS = {
   VERIFY_ADDRESS: 0x00,
   GET_PUBLIC_KEY: 0x01,
@@ -104,6 +114,7 @@ const INS = {
   SIGN_TRANSFER_SCHEDULE_AND_MEMO: 0x34,
   SIGN_REGISTER_DATA: 0x35,
   EXPORT_PRIVATE_KEY_NEW: 0x37,
+  SIGN_PLT_TRANSACTION: 0x38,
 };
 
 /**
@@ -132,6 +143,7 @@ export default class Concordium {
         "verifyAddressLegacy",
         "getPublicKey",
         "exportPrivateKey",
+        "exportPrivateKeyNew",
         "signTransfer",
         "signTransferWithMemo",
         "signTransferWithSchedule",
@@ -146,6 +158,7 @@ export default class Concordium {
         "signPublicInfoForIp",
         "signUpdateCredentials",
         "signCredentialDeployment",
+        "signPLT",
       ],
       scrambleKey
     );
@@ -252,32 +265,108 @@ export default class Concordium {
   /**
    * Export a private key.
    *
-   * @param data - The data required for exporting the private key.
-   * @param exportType - The type of export, either PRF_KEY_SEED or PRF_KEY.
-   * @param mode - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+   * @param exportType - The type of export: identity_credential_creation, account_creation, id_recovery, account_credential_discovery, or creation_of_zk_proof.
+   * @param identityIndex - The identity index.
+   * @param idpIndex - The identity provider index.
+   * @param accountIndex - The account index (optional, only used for some export types).
    * @returns A promise that resolves to an object with the private key and optionally the credential ID.
    */
-  async exportPrivateKeyNew(data: IExportPrivateKeyData, exportType: ExportType, mode: Mode): Promise<{ privateKey: string, credentialId?: string }> {
-    const identityEncoded = encodeInt32(data.identity);
-    const identityProviderEncoded = encodeInt32(data.identityProvider);
-    const payload = Buffer.concat([identityEncoded, identityProviderEncoded]);
+  async exportPrivateKeyNew(
+    exportType: ExportTypeNew,
+    identityIndex: number,
+    idpIndex: number,
+    accountIndex?: number
+  ): Promise<{ privateKey: string }> {
+    let p1: number;
+    
+    // Map export type to P1 value
+    switch (exportType) {
+      case "identity_credential_creation":
+        p1 = P1_IDENTITY_CREDENTIAL_CREATION;
+        break;
+      case "account_creation":
+        p1 = P1_ACCOUNT_CREATION;
+        break;
+      case "id_recovery":
+        p1 = P1_ID_RECOVERY;
+        break;
+      case "account_credential_discovery":
+        p1 = P1_ACCOUNT_CREDENTIAL_DISCOVERY;
+        break;
+      case "creation_of_zk_proof":
+        p1 = P1_CREATION_OF_ZK_PROOF;
+        break;
+      default:
+        throw new Error(`Invalid export type: ${exportType}`);
+    }
+
+    // Construct data payload: idp_index first, then identity_index, then optionally account_index
+    const idpIndexEncoded = encodeInt32(idpIndex);
+    const identityIndexEncoded = encodeInt32(identityIndex);
+    let payload = Buffer.concat([idpIndexEncoded, identityIndexEncoded]);
+    
+    if (accountIndex !== undefined) {
+      const accountIndexEncoded = encodeInt32(accountIndex);
+      payload = Buffer.concat([payload, accountIndexEncoded]);
+    }
 
     const exportedPrivateKey = await this.sendToDevice(
       INS.EXPORT_PRIVATE_KEY_NEW,
-      mode,
-      exportType,
+      p1,
+      NONE,
       payload
     );
 
-    if (mode === Mode.EXPORT_CRED_ID) {
-      return {
-        privateKey: exportedPrivateKey.subarray(0, PRIVATE_KEY_LENGTH).toString("hex"),
-        credentialId: exportedPrivateKey.subarray(PRIVATE_KEY_LENGTH).toString("hex"),
-      };
-    }
-
     return {
       privateKey: exportedPrivateKey.toString("hex"),
+    };
+  }
+
+  /**
+   * Signs a PLT transaction.
+   *
+   * @param txn - The PLT transaction to sign.
+   * @param path - The derivation path to use for signing.
+   * @returns A promise that resolves to an object containing the signature.
+   */
+  async signPLT(txn: IPLTTransaction, path: string): Promise<{ signature: string }> {
+    // Type checking to provide clearer error messages
+    if (typeof path !== 'string') {
+      throw new Error('signPLT: path parameter must be a string. Note: parameter order changed - use signPLT(transaction, path)');
+    }
+    if (!txn || typeof txn !== 'object') {
+      throw new Error('signPLT: txn parameter must be a PLT transaction object');
+    }
+    if (txn.transactionKind !== AccountTransactionType.TokenUpdate) {
+      throw new Error('signPLT: transaction must be of TokenUpdate type');
+    }
+
+    const { payloads } = serializeTransaction(txn, path);
+
+    let response: Buffer;
+    
+    // Send all chunks except the last one with P2_MORE
+    for (let i = 0; i < payloads.length - 1; i++) {
+      await this.sendToDevice(
+        INS.SIGN_PLT_TRANSACTION,
+        i, // p1 = index
+        P2_MORE,
+        payloads[i]
+      );
+    }
+    
+    // Send the last chunk with P2_LAST and get the response
+    response = await this.sendToDevice(
+      INS.SIGN_PLT_TRANSACTION,
+      payloads.length - 1, // p1 = index of last chunk
+      P2_LAST,
+      payloads[payloads.length - 1]
+    );
+
+    if (response.length === 1) throw new Error("User has declined.");
+
+    return {
+      signature: response.toString("hex"),
     };
   }
 

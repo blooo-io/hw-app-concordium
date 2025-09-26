@@ -1,4 +1,5 @@
-import { AccountTransactionType, AttributeKey, CcdAmount, ConfigureBakerPayload, ConfigureDelegationPayload, DataBlob, DeployModulePayload, InitContractPayload, UpdateContractPayload } from "@concordium/common-sdk";
+import { AccountTransactionType } from "@concordium/web-sdk";
+import { AttributeKey, CcdAmount, ConfigureBakerPayload, ConfigureDelegationPayload, DataBlob, DeployModulePayload, InitContractPayload, UpdateContractPayload } from "@concordium/common-sdk";
 import { AccountAddress } from "@concordium/web-sdk";
 
 export enum ExportType {
@@ -10,6 +11,13 @@ export enum Mode {
   DISPLAY = 1,
   EXPORT_CRED_ID = 2
 }
+
+export type ExportTypeNew = 
+  | "identity_credential_creation"
+  | "account_creation"
+  | "id_recovery"
+  | "account_credential_discovery"
+  | "creation_of_zk_proof";
 
 export type Hex = string;
 
@@ -217,4 +225,18 @@ export interface IPublicInfoForIpTransaction {
   publicKeys: ICredentialPublicKeys,
 }
 
-export declare type AccountTransaction = ISimpleTransferTransaction | IPublicInfoForIpTransaction | ICredentialDeploymentTransaction | ISimpleTransferWithMemoTransaction | ISimpleTransferWithScheduleTransaction | ITransferToPublicTransaction | ISimpleTransferWithScheduleAndMemoTransaction | IRegisterDataTransaction | IDeployModuleTransaction | IInitContractTransaction | IUpdateContractTransaction | IUpdateCredentialsTransaction | IConfigureBakerTransaction | IConfigureDelegationTransaction;
+export interface IPLTPayload {
+  tokenId: string;
+  operations: Hex;
+}
+
+export interface IPLTTransaction {
+  sender: AccountAddress.Type,
+  nonce: string,
+  expiry: BigInt,
+  energyAmount: string,
+  transactionKind: AccountTransactionType.TokenUpdate,
+  payload: IPLTPayload,
+}
+
+export declare type AccountTransaction = ISimpleTransferTransaction | IPublicInfoForIpTransaction | ICredentialDeploymentTransaction | ISimpleTransferWithMemoTransaction | ISimpleTransferWithScheduleTransaction | ITransferToPublicTransaction | ISimpleTransferWithScheduleAndMemoTransaction | IRegisterDataTransaction | IDeployModuleTransaction | IInitContractTransaction | IUpdateContractTransaction | IUpdateCredentialsTransaction | IConfigureBakerTransaction | IConfigureDelegationTransaction | IPLTTransaction;
