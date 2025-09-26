@@ -91,6 +91,10 @@ npm install @blooo/hw-app-concordium
             *   [Parameters](#parameters-signupdatecredentials)
             *   [Return](#return-signupdatecredentials)
             *   [Examples](#examples-signupdatecredentials)
+        *   [signPLT](#signplt)
+            *   [Parameters](#parameters-signplt)
+            *   [Return](#return-signplt)
+            *   [Examples](#examples-signplt)
 
 ### Concordium
 
@@ -129,42 +133,80 @@ const { publicKey, signedPublicKey } = await ccd.getPublicKey("44/919/0/0/0/0", 
 
 #### Parameters-ExportPrivateKeyLegacy
 
-*   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key.
-*   `exportType` **ExportType**&#x20; - The type of export, either PRF_KEY_SEED or PRF_KEY.
-*   `mode` **Mode**&#x20; - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+*   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key. Contains `identity` (number) and `identityProvider` (number).
+*   `exportType` **ExportType**&#x20; - The type of export: `ExportType.PRF_KEY_SEED` (1) or `ExportType.PRF_KEY` (2).
+*   `mode` **Mode**&#x20; - The display mode: `Mode.NO_DISPLAY` (0), `Mode.DISPLAY` (1), or `Mode.EXPORT_CRED_ID` (2).
 
 #### Return-ExportPrivateKeyLegacy
 
 *   `privateKey` **string**&#x20; - The private key.
-*   `credentialId` **string**&#x20; - Only if mode is EXPORT_CRED_ID. The credential ID.
+*   `credentialId` **string**&#x20; - Only if mode is `Mode.EXPORT_CRED_ID`. The credential ID.
 
 #### Examples-ExportPrivateKeyLegacy
 
 ```javascript
-const { privateKey } = await ccd.exportPrivateKeyLegacy(data, exportType, mode);
-Or
-const { privateKey, credentialId } = await ccd.exportPrivateKeyLegacy(data, exportType, mode);
+import Concordium, { ExportType, Mode } from "@blooo/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const data = {
+  identity: 0,
+  identityProvider: 1
+};
+
+// Export private key without display
+const { privateKey } = await ccd.exportPrivateKeyLegacy(
+  data, 
+  ExportType.PRF_KEY, 
+  Mode.NO_DISPLAY
+);
+
+// Export private key with credential ID
+const { privateKey: keyWithCredId, credentialId } = await ccd.exportPrivateKeyLegacy(
+  data,
+  ExportType.PRF_KEY_SEED,
+  Mode.EXPORT_CRED_ID
+);
 ```
 
 ### ExportPrivateKeyNew
 
 #### Parameters-ExportPrivateKeyNew
 
-*   `data` **IExportPrivateKeyData**&#x20; - The data required for exporting the private key.
-*   `exportType` **ExportType**&#x20; - The type of export, either PRF_KEY_SEED or PRF_KEY.
-*   `mode` **Mode**&#x20; - The mode, either DISPLAY, NO_DISPLAY, or EXPORT_CRED_ID.
+*   `exportType` **ExportTypeNew**&#x20; - The type of export: "identity_credential_creation", "account_creation", "id_recovery", "account_credential_discovery", or "creation_of_zk_proof".
+*   `identityIndex` **number**&#x20; - The identity index.
+*   `idpIndex` **number**&#x20; - The identity provider index.
+*   `accountIndex` **number**&#x20; - Optional. The account index (only used for some export types).
 
 #### Return-ExportPrivateKeyNew
 
 *   `privateKey` **string**&#x20; - The private key.
-*   `credentialId` **string**&#x20; - Only if mode is EXPORT_CRED_ID. The credential ID.
 
 #### Examples-ExportPrivateKeyNew
 
 ```javascript
-const { privateKey } = await ccd.exportPrivateKeyNew(data, exportType, mode);
-Or
-const { privateKey, credentialId } = await ccd.exportPrivateKeyNew(data, exportType, mode);
+import Concordium from "@blooo/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+// Export private key for identity credential creation
+const { privateKey } = await ccd.exportPrivateKeyNew(
+  "identity_credential_creation",
+  0, // identityIndex
+  1  // idpIndex
+);
+
+// Export private key for account creation with account index
+const { privateKey: accountKey } = await ccd.exportPrivateKeyNew(
+  "account_creation",
+  0, // identityIndex
+  1, // idpIndex
+  0  // accountIndex
+);
 ```
 
 ### VerifyAddress
@@ -862,6 +904,44 @@ const tx = {
 };
 
 const { signature } = await ccd.signUpdateCredentials(tx, "44/919/0/0/0/0");
+```
+
+### signPLT
+
+#### Parameters-signPLT
+
+*   `tx` **IPLTTransaction**&#x20; - A PLT transaction object.
+*   `path` **string**&#x20; - A BIP32 path.
+
+#### Return-signPLT
+
+*   `signature` **string**&#x20; - The signature.
+
+#### Examples-signPLT
+
+```javascript
+import { AccountAddress, CcdAmount, AccountTransactionType } from "@concordium/web-sdk";
+import Concordium from "@blooo/hw-app-concordium";
+import TransportWebHID from "@ledgerhq/hw-transport-webhid";
+
+const transport = await TransportWebHID.create();
+const ccd = new Concordium(transport);
+
+const sender = AccountAddress.fromBase58("4McQDikzr3GXi52Xjgcm2XZbq7E8YF7gzATZScZ5U59eLLkKjg");
+
+const pltTransaction = {
+  sender,
+  nonce: '321',
+  expiry: BigInt(123456),
+  energyAmount: '1234',
+  transactionKind: AccountTransactionType.TokenUpdate,
+  payload: {
+    tokenName: "PLT Token",
+    operations: "81A1687472616E73666572A266616D6F756E74C482211904C769726563697069656E74D99D73A201D99D71A10119039703582020A845815BD43A1999E90FBF971537A70392EB38F89E6BD32B3DD70E1A9551D7"
+  }
+};
+
+const { signature } = await ccd.signPLT(pltTransaction, "1105'/0'/0'/0/0/0/0/");
 ```
 
 ## License
