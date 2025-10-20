@@ -1,5 +1,4 @@
 import { AccountAddress, AccountTransactionType, getAccountTransactionHandler } from "@concordium/web-sdk";
-import { IPLTPayload } from "./type";
 
 /**
  * Checks if a transaction handler exists for a given transaction kind.

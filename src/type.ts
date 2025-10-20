@@ -1,5 +1,4 @@
-import { AccountTransactionType, AccountAddress } from "@concordium/web-sdk";
-import { AttributeKey, CcdAmount, ConfigureBakerPayload, ConfigureDelegationPayload, DataBlob, DeployModulePayload, InitContractPayload, UpdateContractPayload } from "@concordium/common-sdk";
+import { AccountTransactionType, AccountAddress, TokenUpdatePayload, AttributeKey, ConfigureBakerPayload, ConfigureDelegationPayload, DataBlob, DeployModulePayload, InitContractPayload, UpdateContractPayload, CcdAmount } from "@concordium/web-sdk";
 
 export enum ExportType {
   PRF_KEY_SEED = 1,
@@ -26,7 +25,7 @@ export interface IExportPrivateKeyData {
 }
 
 export interface ISimpleTransfer {
-  amount: CcdAmount,
+  amount: CcdAmount.Type,
   toAddress: AccountAddress.Type,
 }
 
@@ -40,9 +39,9 @@ export interface ISimpleTransferTransaction {
 }
 
 export interface ISimpleTransferWithMemo {
-  amount: CcdAmount,
+  amount: CcdAmount.Type,
   toAddress: AccountAddress.Type,
-  memo: string | DataBlob,
+  memo: DataBlob,
 }
 
 export interface ISimpleTransferWithMemoTransaction {
@@ -89,7 +88,7 @@ export interface IConfigureBakerTransaction {
 export interface ISimpleTransferWithScheduleAndMemo {
   toAddress: AccountAddress.Type,
   schedule: { timestamp: string, amount: string }[],
-  memo: string | DataBlob,
+  memo: DataBlob,
 }
 
 export interface ISimpleTransferWithScheduleAndMemoTransaction {
@@ -102,7 +101,7 @@ export interface ISimpleTransferWithScheduleAndMemoTransaction {
 }
 
 export interface IRegisterData {
-  data: string | DataBlob,
+  data: DataBlob,
 }
 
 export interface IRegisterDataTransaction {
@@ -116,7 +115,7 @@ export interface IRegisterDataTransaction {
 
 export interface ITransferToPublic {
   remainingAmount: Hex,
-  transferAmount: CcdAmount,
+  transferAmount: CcdAmount.Type,
   recipient: AccountAddress.Type,
   index: string,
   proofs: Hex,
@@ -224,18 +223,13 @@ export interface IPublicInfoForIpTransaction {
   publicKeys: ICredentialPublicKeys,
 }
 
-export interface IPLTPayload {
-  tokenName: string | DataBlob,
-  operations: Hex;
-}
-
 export interface IPLTTransaction {
   sender: AccountAddress.Type,
   nonce: string,
   expiry: BigInt,
   energyAmount: string,
   transactionKind: AccountTransactionType,
-  payload: IPLTPayload,
+  payload: TokenUpdatePayload,
 }
 
 export declare type AccountTransaction = ISimpleTransferTransaction | IPublicInfoForIpTransaction | ICredentialDeploymentTransaction | ISimpleTransferWithMemoTransaction | ISimpleTransferWithScheduleTransaction | ITransferToPublicTransaction | ISimpleTransferWithScheduleAndMemoTransaction | IRegisterDataTransaction | IDeployModuleTransaction | IInitContractTransaction | IUpdateContractTransaction | IUpdateCredentialsTransaction | IConfigureBakerTransaction | IConfigureDelegationTransaction | IPLTTransaction;

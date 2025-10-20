@@ -20,10 +20,9 @@ import {
   serializePltTransaction
 } from "./serialization";
 import { encodeInt32, encodeInt8, encodeWord64 } from "./utils";
-import { Mode, ExportType, ExportTypeNew, IExportPrivateKeyData, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleTransaction, ISimpleTransferWithScheduleAndMemoTransaction, IConfigureDelegationTransaction, IRegisterDataTransaction, ITransferToPublicTransaction, IDeployModuleTransaction, IInitContractTransaction, IUpdateContractTransaction, IPublicInfoForIpTransaction, ICredentialDeploymentTransaction, IUpdateCredentialsTransaction, IConfigureBakerTransaction, AccountTransaction, IPLTTransaction, IPLTPayload } from "./type";
-import { AccountTransactionType } from "@concordium/web-sdk";
+import { Mode, ExportType, ExportTypeNew, IExportPrivateKeyData, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleTransaction, ISimpleTransferWithScheduleAndMemoTransaction, IConfigureDelegationTransaction, IRegisterDataTransaction, ITransferToPublicTransaction, IDeployModuleTransaction, IInitContractTransaction, IUpdateContractTransaction, IPublicInfoForIpTransaction, ICredentialDeploymentTransaction, IUpdateCredentialsTransaction, IConfigureBakerTransaction, IPLTTransaction } from "./type";
 
-export type { ExportType, ExportTypeNew, IPLTTransaction, IPLTPayload };
+export type { ExportType, ExportTypeNew, IPLTTransaction };
 const PRIVATE_KEY_LENGTH = 32;
 const PUBLIC_KEY_LENGTH = 32;
 
