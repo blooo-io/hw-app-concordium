@@ -35,5 +35,5 @@ const pltTransaction = {
   }
 };
 
-const { signature } = await ccd.signPLT(pltTransaction, "1105'/0'/0'/0/0/0/0/");
+const { signature } = await ccd.signPLT(pltTransaction, "44/919/0/0/0/0");
 ```

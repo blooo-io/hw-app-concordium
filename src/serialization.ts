@@ -1,11 +1,10 @@
 import BIPPath from "bip32-path";
 import { encodeDataBlob, encodeInt32, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader } from "./utils";
-import { DataBlob } from "@concordium/common-sdk/lib/types/DataBlob";
 import { Buffer as NodeBuffer } from 'buffer/index';
-import { AccountAddress } from "@concordium/web-sdk";
-import { serializeCredentialDeploymentInfo } from "@concordium/common-sdk/lib/serialization";
-import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/common-sdk/lib/serializationHelpers";
-import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction, IPLTPayload, IPLTTransaction } from "./type";
+import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction, IPLTTransaction } from "./type";
+import { AccountAddress, DataBlob } from "@concordium/web-sdk";
+import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/web-sdk/lib/esm/serializationHelpers";
+import { serializeCredentialDeploymentInfo } from "@concordium/web-sdk/lib/esm/serialization";
 
 // Transaction-related constants
 const MAX_CHUNK_SIZE = 255;
@@ -178,25 +177,35 @@ export const serializeTransaction = (txn: AccountTransaction, path: string): { p
   return { payloads };
 }
 
- /**
- * Serializes a PLT transaction.
- * @param txn The PLT transaction to serialize.
- * @param path The BIP32 path as a string.
- * @returns An object containing serialized payloads.
- */
+/**
+* Serializes a PLT transaction.
+* @param txn The PLT transaction to serialize.
+* @param path The BIP32 path as a string.
+* @returns An object containing serialized payloads.
+*/
 export const serializePltTransaction = (txn: IPLTTransaction, path: string): Buffer[] => {
-  const tokenName: string = txn.payload.tokenName as string;
-  const tokenNameBuffer = NodeBuffer.from(tokenName, 'utf-8');
-  txn.payload.tokenName = new DataBlob(tokenNameBuffer);
-  const serializedTokenName = encodeDataBlob(txn.payload.tokenName).subarray(1);
+  if (!txn.payload.tokenId) {
+    throw new Error('tokenId is undefined in PLT transaction payload');
+  }
   
-  const operationsBuffer = Buffer.from(txn.payload.operations, 'hex');
+  // Handle both string and TokenId object cases
+  const tokenName: string = typeof txn.payload.tokenId === 'string' 
+    ? txn.payload.tokenId 
+    : txn.payload.tokenId.value;
+  
+  const serializedTokenName = encodeDataBlob(tokenName).subarray(1);
+
+  // Handle both string and Cbor object cases
+  const operationsBuffer = typeof txn.payload.operations === 'string'
+    ? Buffer.from(txn.payload.operations, 'hex')
+    : txn.payload.operations.bytes;
+    
   const operationsLength = encodeInt32(operationsBuffer.length);
 
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
 
   const payloadSize = serializedType.length + operationsBuffer.length + serializedTokenName.length;
-  
+
   const serializedHeader = serializeAccountTransactionHeader(txn, payloadSize);
 
   const serializedTransaction = Buffer.concat([serializedHeader, serializedType, serializedTokenName, operationsLength, operationsBuffer]);
@@ -222,12 +231,6 @@ export const serializeSimpleTransfer = (txn: ISimpleTransferTransaction, path: s
  * @returns {{ payloadHeaderAddressMemoLength: Buffer[], payloadsMemo: Buffer[], payloadsAmount: Buffer[] }} - An object containing serialized payloads.
  */
 export const serializeSimpleTransferWithMemo = (txn: ISimpleTransferWithMemoTransaction, path: string): { payloadHeaderAddressMemoLength: Buffer[], payloadsMemo: Buffer[], payloadsAmount: Buffer[] } => {
-  // Convert the string to a buffer
-  const memo: string = txn.payload.memo.toString();
-  const memoBuffer = NodeBuffer.from(memo, 'utf-8');
-  // Encode the buffer as a DataBlob
-  txn.payload.memo = new DataBlob(memoBuffer);
-
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
   const serializedToAddress = AccountAddress.toBuffer(txn.payload.toAddress);
   const serializedAmount = encodeWord64(txn.payload.amount.microCcdAmount);
@@ -367,12 +370,6 @@ export const serializeConfigureBaker = (txn: IConfigureBakerTransaction, path: s
  * @returns {{ payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] }} - An object containing serialized payloads.
  */
 export const serializeTransferWithScheduleAndMemo = (txn: ISimpleTransferWithScheduleAndMemoTransaction, path: string): { payloadHeaderAddressScheduleLengthAndMemoLength: Buffer[], payloadMemo: Buffer[], payloadsSchedule: Buffer[] } => {
-  // Convert the string to a buffer
-  const memo: string = txn.payload.memo as string;
-  const memoBuffer = NodeBuffer.from(memo, 'utf-8');
-  // Encode the buffer as a DataBlob
-  txn.payload.memo = new DataBlob(memoBuffer);
-
   const toAddressBuffer = AccountAddress.toBuffer(txn.payload.toAddress);
   const scheduleLength = encodeInt8(txn.payload.schedule.length);
   const scheduleBufferArray = txn.payload.schedule.map((item: { timestamp: string, amount: string }) => {
@@ -411,12 +408,6 @@ export const serializeTransferWithScheduleAndMemo = (txn: ISimpleTransferWithSch
  * @returns {{ payloadHeader: Buffer[], payloadsData: Buffer[] }} - An object containing serialized payloads.
  */
 export const serializeRegisterData = (txn: IRegisterDataTransaction, path: string): { payloadHeader: Buffer[], payloadsData: Buffer[] } => {
-  // Convert the string to a buffer
-  const data: string = txn.payload.data as string;
-  const dataBuffer = NodeBuffer.from(data, 'utf-8');
-  // Encode the buffer as a DataBlob
-  txn.payload.data = new DataBlob(dataBuffer);
-
   const serializedData = encodeDataBlob(txn.payload.data);
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
 
@@ -469,7 +460,7 @@ export const serializeDeployModule = (txn: IDeployModuleTransaction, path: strin
   const payloadSource = txSerialized.subarray(HEADER_LENGTH + TRANSACTION_KIND_LENGTH + VERSION_LENGTH + SOURCE_LENGTH_LENGTH);
 
   const payloadsHeaderAndVersion = serializeTransactionPayloadsWithDerivationPath(path, headerAndVersion);
-  return {payloadsHeaderAndVersion, payloadSource};
+  return { payloadsHeaderAndVersion, payloadSource };
 };
 
 /**
@@ -485,14 +476,14 @@ export const serializeInitContract = (txn: IInitContractTransaction, path: strin
   offset += HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + MODULE_REF_LENGTH;
   const payloadsHeaderAndData = serializeTransactionPayloadsWithDerivationPath(path, headerAndData);
 
-  const nameLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
-  offset += 2*ONE_OCTET_LENGTH;
+  const nameLength = txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH);
+  offset += 2 * ONE_OCTET_LENGTH;
   const name = txSerialized.subarray(offset, offset + nameLength.readUInt16BE(0));
   offset += nameLength.readUInt16BE(0);
   const payloadsName = serializeTransactionPayloads(Buffer.concat([nameLength, name]));
 
-  const paramLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
-  offset += 2*ONE_OCTET_LENGTH;
+  const paramLength = txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH);
+  offset += 2 * ONE_OCTET_LENGTH;
   const param = txSerialized.subarray(offset, offset + paramLength.readUInt16BE(0));
   offset += paramLength.readUInt16BE(0);
   const payloadsParam = serializeTransactionPayloads(Buffer.concat([paramLength, param]));
@@ -513,14 +504,14 @@ export const serializeUpdateContract = (txn: IUpdateContractTransaction, path: s
   offset += HEADER_LENGTH + TRANSACTION_KIND_LENGTH + AMOUNT_LENGTH + UPDATE_INDEX_LENGTH + UPDATE_SUB_INDEX_LENGTH;
   const payloadsHeaderAndData = serializeTransactionPayloadsWithDerivationPath(path, headerAndData);
 
-  const nameLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
-  offset += 2*ONE_OCTET_LENGTH;
+  const nameLength = txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH);
+  offset += 2 * ONE_OCTET_LENGTH;
   const name = txSerialized.subarray(offset, offset + nameLength.readUInt16BE(0));
   offset += nameLength.readUInt16BE(0);
   const payloadsName = serializeTransactionPayloads(Buffer.concat([nameLength, name]));
 
-  const paramLength = txSerialized.subarray(offset, offset + 2*ONE_OCTET_LENGTH);
-  offset += 2*ONE_OCTET_LENGTH;
+  const paramLength = txSerialized.subarray(offset, offset + 2 * ONE_OCTET_LENGTH);
+  offset += 2 * ONE_OCTET_LENGTH;
   const param = txSerialized.subarray(offset, offset + paramLength.readUInt16BE(0));
   offset += paramLength.readUInt16BE(0);
   const payloadsParam = serializeTransactionPayloads(Buffer.concat([paramLength, param]));
@@ -659,7 +650,7 @@ export const serializePublicInfoForIp = (txn: IPublicInfoForIpTransaction, path:
   const serializedPublicKeys = serializeMap(txn.publicKeys.keys, encodeWord8, encodeWord8FromString, serializeVerifyKey);
   const payloadThreshold = encodeInt8(txn.publicKeys.threshold);
 
-  const payloadIdCredPubAndRegIdAndKeysLenght = Buffer.concat([pathBuffer,serializedIdCredPub, serializedRegId, serializedPublicKeys.subarray(0, 1)]);
+  const payloadIdCredPubAndRegIdAndKeysLenght = Buffer.concat([pathBuffer, serializedIdCredPub, serializedRegId, serializedPublicKeys.subarray(0, 1)]);
 
   let payloadKeys: Buffer[] = [];
   for (let i = 0; i < Object.keys(txn.publicKeys.keys).length; i++) {
