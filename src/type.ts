@@ -41,7 +41,7 @@ export interface ISimpleTransferTransaction {
 export interface ISimpleTransferWithMemo {
   amount: CcdAmount.Type,
   toAddress: AccountAddress.Type,
-  memo: DataBlob,
+  memo: string |DataBlob,
 }
 
 export interface ISimpleTransferWithMemoTransaction {

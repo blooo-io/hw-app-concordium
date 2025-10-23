@@ -2,7 +2,7 @@ import BIPPath from "bip32-path";
 import { encodeDataBlob, encodeInt32, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader } from "./utils";
 import { Buffer as NodeBuffer } from 'buffer/index';
 import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction, IPLTTransaction } from "./type";
-import { AccountAddress } from "@concordium/web-sdk";
+import { AccountAddress, DataBlob } from "@concordium/web-sdk";
 import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/web-sdk/lib/esm/serializationHelpers";
 import { serializeCredentialDeploymentInfo } from "@concordium/web-sdk/lib/esm/serialization";
 
@@ -184,13 +184,22 @@ export const serializeTransaction = (txn: AccountTransaction, path: string): { p
 * @returns An object containing serialized payloads.
 */
 export const serializePltTransaction = (txn: IPLTTransaction, path: string): Buffer[] => {
-  const tokenName: string = txn.payload.tokenId.value;
-  const tokenNameBuffer = NodeBuffer.from(tokenName, 'utf-8');
-  // txn.payload.tokenId = new DataBlob(tokenNameBuffer);
-  const serializedTokenName = encodeDataBlob(tokenNameBuffer).subarray(1);
+  if (!txn.payload.tokenId) {
+    throw new Error('tokenId is undefined in PLT transaction payload');
+  }
+  
+  // Handle both string and TokenId object cases
+  const tokenName: string = typeof txn.payload.tokenId === 'string' 
+    ? txn.payload.tokenId 
+    : txn.payload.tokenId.value;
+  
+  const serializedTokenName = encodeDataBlob(tokenName).subarray(1);
 
-  // const operationsBuffer = Buffer.from(txn.payload.operations, 'hex');
-  const operationsBuffer = txn.payload.operations.bytes;
+  // Handle both string and Cbor object cases
+  const operationsBuffer = typeof txn.payload.operations === 'string'
+    ? Buffer.from(txn.payload.operations, 'hex')
+    : txn.payload.operations.bytes;
+    
   const operationsLength = encodeInt32(operationsBuffer.length);
 
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
@@ -225,7 +234,7 @@ export const serializeSimpleTransferWithMemo = (txn: ISimpleTransferWithMemoTran
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
   const serializedToAddress = AccountAddress.toBuffer(txn.payload.toAddress);
   const serializedAmount = encodeWord64(txn.payload.amount.microCcdAmount);
-  const serializedMemo = encodeDataBlob(txn.payload.memo.data);
+  const serializedMemo = encodeDataBlob(txn.payload.memo);
   const memoLength = serializedMemo.subarray(0, 2);
 
   const payloadSize = serializedType.length + serializedMemo.length + serializedAmount.length + serializedToAddress.length;
@@ -370,7 +379,7 @@ export const serializeTransferWithScheduleAndMemo = (txn: ISimpleTransferWithSch
   });
 
   const serializedSchedule = Buffer.concat([...scheduleBufferArray]);
-  const serializedMemo = encodeDataBlob(txn.payload.memo.data);
+  const serializedMemo = encodeDataBlob(txn.payload.memo);
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
 
   const payloadSize = serializedType.length + scheduleLength.length + serializedSchedule.length + toAddressBuffer.length + serializedMemo.length;
@@ -399,7 +408,7 @@ export const serializeTransferWithScheduleAndMemo = (txn: ISimpleTransferWithSch
  * @returns {{ payloadHeader: Buffer[], payloadsData: Buffer[] }} - An object containing serialized payloads.
  */
 export const serializeRegisterData = (txn: IRegisterDataTransaction, path: string): { payloadHeader: Buffer[], payloadsData: Buffer[] } => {
-  const serializedData = encodeDataBlob(txn.payload.data.data);
+  const serializedData = encodeDataBlob(txn.payload.data);
   const serializedType = Buffer.from(Uint8Array.of(txn.transactionKind));
 
   const payloadSize = serializedType.length + serializedData.length;

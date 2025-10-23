@@ -107,13 +107,30 @@ export function encodeInt8(value: number): Buffer {
 }
 
 /**
- * Encodes a data blob with its length as a prefix.
- * @param blob The data blob to encode.
+ * Encodes a data blob (DataBlob or string) with its length as a prefix.
+ * @param blob The data blob to encode. Should be either a DataBlob instance (with .data: Buffer)
+ *   or a string (UTF-8, or hex if prefixed as such).
  * @returns A Buffer containing the length-prefixed data blob.
  */
-export function encodeDataBlob(blob) {
-  const length = encodeWord16(blob.data.length);
-  return Buffer.concat([length, blob.data]);
+export function encodeDataBlob(blob: any) {
+  let dataBuffer: Buffer;
+  if (typeof blob === "string") {
+    // If hex string (with 0x) use Buffer.from(str, 'hex')
+    if (blob.startsWith("0x") || blob.startsWith("0X")) {
+      dataBuffer = Buffer.from(blob.slice(2), "hex");
+    } else {
+      // Interpret string as UTF-8
+      dataBuffer = Buffer.from(blob, "utf-8");
+    }
+  } else if (blob && typeof blob === "object" && blob.data) {
+    // DataBlob type, .data may be Buffer or Uint8Array
+    // Ensure Buffer
+    dataBuffer = Buffer.isBuffer(blob.data) ? blob.data : Buffer.from(blob.data);
+  } else {
+    throw new Error("Invalid blob: must be a DataBlob or string");
+  }
+  const length = encodeWord16(dataBuffer.length);
+  return Buffer.concat([length, dataBuffer]);
 }
 
 /**
