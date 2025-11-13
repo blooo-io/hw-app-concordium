@@ -1,7 +1,7 @@
 {
   "name": "@blooo/hw-app-concordium",
   "type": "module",
-  "version": "1.1.1",
+  "version": "1.1.3",
   "description": "Ledger Hardware Wallet Concordium Application API",
   "keywords": [
     "Ledger",
@@ -31,7 +31,6 @@
   "types": "lib/Concordium.d.ts",
   "license": "Apache-2.0",
   "dependencies": {
-    "@concordium/web-sdk": "^10.0.1",
     "@ledgerhq/errors": "^6.19.1",
     "@ledgerhq/hw-transport": "^6.31.4",
     "bip32-path": "^0.4.2"
@@ -39,6 +38,9 @@
   "devDependencies": {
     "@types/node": "^20.8.10",
     "ts-node": "^10.4.0"
+  },
+  "peerDependencies": {
+    "@concordium/web-sdk": ">= 10"
   },
   "scripts": {
     "build": "tsc && tsc -m ES6 --outDir lib-es",
