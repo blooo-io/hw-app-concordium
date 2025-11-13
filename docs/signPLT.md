@@ -1,6 +1,6 @@
 # signPLT
 
-Sign a PLT (Private Ledger Transaction) transaction.
+Sign a PLT (Protocol Level Token) transaction.
 
 ## Parameters
 

@@ -205,7 +205,7 @@ export default class Concordium {
    * @returns A promise that resolves to an object with the public key and optionally the signed public key.
    *
    * @example
-   * concordium.getPublicKey("1105'/0'/0'/0/0/0/0/", true, false)
+   * concordium.getPublicKey("44/919/0/0/0/0", true, false)
    */
   async getPublicKey(path: string, display?: boolean, signedKey?: boolean): Promise<{ publicKey: string, signedPublicKey?: string }> {
     const pathBuffer = pathToBuffer(path);

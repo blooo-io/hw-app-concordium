@@ -10,7 +10,7 @@ export enum Mode {
   EXPORT_CRED_ID = 2
 }
 
-export type ExportTypeNew = 
+export type ExportTypeNew =
   | "identity_credential_creation"
   | "account_creation"
   | "id_recovery"
@@ -41,7 +41,7 @@ export interface ISimpleTransferTransaction {
 export interface ISimpleTransferWithMemo {
   amount: CcdAmount.Type,
   toAddress: AccountAddress.Type,
-  memo: string |DataBlob,
+  memo: string | DataBlob,
 }
 
 export interface ISimpleTransferWithMemoTransaction {

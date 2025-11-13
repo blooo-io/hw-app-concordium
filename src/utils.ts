@@ -95,6 +95,21 @@ export function encodeWord16(value, useLittleEndian = false) {
 }
 
 /**
+ * Encodes a 8 bit unsigned integer to a Buffer using big endian.
+ * @param value a 8 bit integer
+ * @returns big endian serialization of the input
+ */
+export function encodeWord8(value) {
+    if (value > 255 || value < 0 || !Number.isInteger(value)) {
+        throw new Error('The input has to be a 8 bit unsigned integer but it was: ' + value);
+    }
+    return Buffer.from(Buffer.of(value));
+}
+export function encodeWord8FromString(value) {
+    return encodeWord8(Number(value));
+}
+
+/**
  * Encodes an 8-bit signed integer to a Buffer using big endian.
  * @param value An 8-bit integer.
  * @returns Big endian serialization of the input.
@@ -104,6 +119,19 @@ export function encodeInt8(value: number): Buffer {
     throw new Error('The input has to be a 8 bit signed integer but it was: ' + value);
   }
   return Buffer.from(Buffer.of(value));
+}
+
+/**
+ * Serializes a year and month string.
+ * @param yearMonth year and month formatted as "YYYYMM"
+ * @returns the serialization of the year and month string
+ */
+export function serializeYearMonth(yearMonth) {
+    const year = parseInt(yearMonth.substring(0, 4), 10);
+    const month = parseInt(yearMonth.substring(4, 6), 10);
+    const serializedYear = encodeWord16(year);
+    const serializedMonth = encodeWord8(month);
+    return Buffer.concat([serializedYear, serializedMonth]);
 }
 
 /**
@@ -131,6 +159,48 @@ export function encodeDataBlob(blob: any) {
   }
   const length = encodeWord16(dataBuffer.length);
   return Buffer.concat([length, dataBuffer]);
+}
+
+/**
+ * 
+ * @param map Object ([key: number]: IVerifyKey)
+ * @param encodeSize function
+ * @param encodeKey function
+ * @param encodeValue function
+ * @returns 
+ */
+export function serializeMap(map, encodeSize, encodeKey, encodeValue) {
+    const keys = Object.keys(map);
+    const buffers = [encodeSize(keys.length)];
+    keys.forEach((key) => {
+        buffers.push(encodeKey(key));
+        buffers.push(encodeValue(map[key]));
+    });
+    return Buffer.concat(buffers);
+}
+
+/**
+ * Serializes a public key. The serialization includes the
+ * scheme used for the key/
+ * @param key the key to serialize
+ * @returns the serialization of the key
+ */
+var SchemeId;
+(function (SchemeId) {
+    SchemeId[SchemeId["Ed25519"] = 0] = "Ed25519";
+})(SchemeId || (SchemeId = {}));
+export function serializeVerifyKey(key) {
+    const scheme = key.schemeId;
+    let schemeId;
+    if (SchemeId[scheme] !== undefined) {
+        schemeId = SchemeId[scheme];
+    }
+    else {
+        throw new Error(`Unknown key type: ${scheme}`);
+    }
+    const keyBuffer = Buffer.from(key.verifyKey, 'hex');
+    const serializedScheme = encodeWord8(schemeId);
+    return Buffer.concat([serializedScheme, keyBuffer]);
 }
 
 /**
