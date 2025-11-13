@@ -1,10 +1,7 @@
 import BIPPath from "bip32-path";
-import { encodeDataBlob, encodeInt32, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader } from "./utils";
-import { Buffer as NodeBuffer } from 'buffer/index';
+import { encodeDataBlob, encodeInt32, encodeInt8, encodeWord16, encodeWord64, serializeAccountTransaction, serializeAccountTransactionHeader, encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey, encodeWord32, serializeYearMonth } from "./utils";
 import { AccountTransaction, IConfigureBakerTransaction, IConfigureDelegationTransaction, ICredentialDeploymentTransaction, IDeployModuleTransaction, IInitContractTransaction, IPublicInfoForIpTransaction, IRegisterDataTransaction, ISimpleTransferTransaction, ISimpleTransferWithMemoTransaction, ISimpleTransferWithScheduleAndMemoTransaction, ISimpleTransferWithScheduleTransaction, ITransferToPublicTransaction, IUpdateContractTransaction, IUpdateCredentialsTransaction, IPLTTransaction } from "./type";
-import { AccountAddress, DataBlob } from "@concordium/web-sdk";
-import { encodeWord8, encodeWord8FromString, serializeMap, serializeVerifyKey } from "@concordium/web-sdk/lib/esm/serializationHelpers";
-import { serializeCredentialDeploymentInfo } from "@concordium/web-sdk/lib/esm/serialization";
+import { AccountAddress, AttributesKeys } from "@concordium/web-sdk";
 
 // Transaction-related constants
 const MAX_CHUNK_SIZE = 255;
@@ -518,6 +515,53 @@ export const serializeUpdateContract = (txn: IUpdateContractTransaction, path: s
 
   return { payloadsHeaderAndData, payloadsName, payloadsParam };
 };
+
+/**
+ * Serializes the credential deployment values as expected by the node. This constitutes
+ * a part of the serialization of a credential deployment.
+ * @param credential the credential deployment values to serialize
+ * @returns the serialization of CredentialDeploymentValues
+ */
+function serializeCredentialDeploymentValues(credential) {
+    const buffers: Buffer[] = [];
+    buffers.push(serializeMap(credential.credentialPublicKeys.keys, encodeWord8, encodeWord8FromString, serializeVerifyKey));
+    buffers.push(encodeWord8(credential.credentialPublicKeys.threshold));
+    buffers.push(Buffer.from(credential.credId, 'hex'));
+    buffers.push(encodeWord32(credential.ipIdentity));
+    buffers.push(encodeWord8(credential.revocationThreshold));
+    buffers.push(serializeMap(credential.arData, encodeWord16, (key) => encodeWord32(parseInt(key, 10)), (arData) => Buffer.from(arData.encIdCredPubShare, 'hex')));
+    buffers.push(serializeYearMonth(credential.policy.validTo));
+    buffers.push(serializeYearMonth(credential.policy.createdAt));
+    const revealedAttributes = Object.entries(credential.policy.revealedAttributes);
+    buffers.push(encodeWord16(revealedAttributes.length));
+    const revealedAttributeTags = revealedAttributes.map(([tagName, value]) => [
+        AttributesKeys[tagName],
+        value,
+    ]);
+    revealedAttributeTags
+        .sort((a, b) => a[0] - b[0])
+        .forEach(([tag, value]) => {
+        const serializedAttributeValue = Buffer.from(value, 'utf-8');
+        const serializedTag = encodeWord8(tag);
+        const serializedAttributeValueLength = encodeWord8(serializedAttributeValue.length);
+        buffers.push(Buffer.concat([serializedTag, serializedAttributeValueLength]));
+        buffers.push(serializedAttributeValue);
+    });
+    return Buffer.concat(buffers);
+}
+
+/**
+ * Serializes a signed credential used as part of an update credentials account
+ * transaction.
+ * @param credential the already signed credential deployment information
+ * @returns the serialization of the signed credential
+ */
+export function serializeCredentialDeploymentInfo(credential) {
+    const serializedCredentialDeploymentValues = serializeCredentialDeploymentValues(credential);
+    const serializedProofs = Buffer.from(credential.proofs, 'hex');
+    const serializedProofsLength = encodeWord32(serializedProofs.length);
+    return Buffer.concat([serializedCredentialDeploymentValues, serializedProofsLength, serializedProofs]);
+}
 
 /**
  * Serializes a credential deployment transaction.
