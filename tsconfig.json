@@ -15,7 +15,7 @@
     "downlevelIteration": true,
     "noImplicitAny": false,
     "noImplicitThis": false,
-    "module": "ESNext",
+    "module": "commonjs",
     "lib": ["DOM", "ES2017"],
     "isolatedModules": false,
     "target": "ES6",
